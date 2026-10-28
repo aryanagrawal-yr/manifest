@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}All records{% endblock %}
+{% block content %}
+<div class="row between">
+  <h1>All records <span class="muted">({{ total }})</span></h1>
+  <a class="btn ghost" href="{{ url_for('export') }}">Download full Excel</a>
+</div>
+
+<form class="filters" method="get">
+  <input name="q" value="{{ q }}" placeholder="Search AWB, order id, courier, vehicle, manifest no...">
+  <select name="partner">
+    <option value="">All partners</option>
+    {% for p in partners %}<option {{ 'selected' if p == partner }}>{{ p }}</option>{% endfor %}
+  </select>
+  <input type="date" name="date" value="{{ day }}">
+  <button class="btn">Filter</button>
+</form>
+
+{% if rows %}
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>Date &amp; time</th><th>Partner</th><th>Courier boy</th><th>Vehicle</th><th>Shipments</th><th>Gate</th><th>Downloads</th>
+  </tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr>
+    <td><a href="{{ url_for('view', dispatch_id=r.dispatch_id) }}">{{ r.dispatch_dt }}</a><br><small class="muted">{{ r.manifest_no }}</small></td>
+    <td>{{ r.partner }}</td>
+    <td>{{ r.courier_name }}<br><small class="muted">{{ r.courier_phone }}</small></td>
+    <td>{{ r.vehicle_no }}<br><small class="muted">{{ r.vehicle_type }}</small></td>
+    <td>{{ r.total_items }}</td>
+    <td>
+      <span class="pill {{ 'ok' if r.entry_time }}">In</span>
+      <span class="pill {{ 'ok' if r.exit_time }}">Out</span>
+    </td>
+    <td class="nowrap">
+      <a href="{{ url_for('manifest_pdf', dispatch_id=r.dispatch_id) }}">Manifest</a> ·
+      <a href="{{ url_for('gatepass_pdf', dispatch_id=r.dispatch_id) }}">Gatepass</a>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if total > rows|length %}<p class="muted">Showing latest {{ rows|length }}. Narrow the filters or download the full Excel.</p>{% endif %}
+{% else %}
+<div class="card"><p>No records found. <a href="{{ url_for('new') }}">Create the first manifest &amp; gatepass</a>.</p></div>
+{% endif %}
+{% endblock %}

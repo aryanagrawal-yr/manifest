@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{{ d.manifest_no }}{% endblock %}
+{% block content %}
+<div class="row between">
+  <h1>{{ d.manifest_no }} <span class="muted">/ {{ d.gatepass_no }}</span></h1>
+  <a href="{{ url_for('dashboard') }}">&larr; All records</a>
+</div>
+
+<div class="actions">
+  <a class="btn" href="{{ url_for('manifest_pdf', dispatch_id=d.dispatch_id) }}">Download Manifest PDF</a>
+  <a class="btn" href="{{ url_for('gatepass_pdf', dispatch_id=d.dispatch_id) }}">Download Gatepass PDF</a>
+</div>
+
+<div class="card">
+  <dl class="details">
+    <div><dt>Date &amp; time</dt><dd>{{ d.dispatch_dt }}</dd></div>
+    <div><dt>Logistics partner</dt><dd>{{ d.partner }}</dd></div>
+    <div><dt>Courier boy</dt><dd>{{ d.courier_name }}</dd></div>
+    <div><dt>Phone</dt><dd>{{ d.courier_phone }}</dd></div>
+    <div><dt>Vehicle number</dt><dd>{{ d.vehicle_no }}</dd></div>
+    <div><dt>Vehicle type</dt><dd>{{ d.vehicle_type }}</dd></div>
+    <div><dt>Employee</dt><dd>{{ d.employee }}</dd></div>
+    <div><dt>Created</dt><dd>{{ d.created_at }} by {{ d.created_by }}</dd></div>
+    {% if d.notes %}<div class="wide"><dt>Notes</dt><dd>{{ d.notes }}</dd></div>{% endif %}
+  </dl>
+</div>
+
+<div class="card">
+  <h2>Gate record</h2>
+  <div class="gate">
+    {% for which, label, val in [('entry', 'Vehicle entry', d.entry_time), ('exit', 'Vehicle exit', d.exit_time)] %}
+    <div class="gatebox">
+      <strong>{{ label }}</strong>
+      {% if val %}
+        <div class="big">{{ val }}</div>
+      {% else %}
+        <form method="post" action="{{ url_for('gate', dispatch_id=d.dispatch_id, which=which) }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn ghost">Mark {{ which }} now</button>
+        </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <p class="muted small">Times are recorded once and cannot be overwritten. The downloaded gatepass shows them.</p>
+</div>
+
+<div class="card">
+  <h2>Shipments ({{ d['items']|length }})</h2>
+  <ol class="refs">
+    {% for ref in d['items'] %}<li>{{ ref }}</li>{% endfor %}
+  </ol>
+</div>
+{% endblock %}
