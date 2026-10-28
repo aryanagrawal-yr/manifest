@@ -215,16 +215,26 @@
     const d = records.find((r) => r.id === id);
     if (!d) { shell(h("div", { class: "card" }, "Record not found. ", h("a", { href: "#/" }, "Back to all records"))); return; }
     const dl = (k, v, wide) => h("div", { class: wide ? "wide" : "" }, h("dt", {}, k), h("dd", {}, v || "-"));
-    const gate = (which, title, val) => h("div", { class: "gatebox" }, h("strong", {}, title),
-      val ? h("div", { class: "big" }, val) : h("button", { class: "btn ghost", onclick: async (e) => {
-        e.target.disabled = true;
+    const gate = (which, title, val) => {
+      if (val) return h("div", { class: "gatebox" }, h("strong", {}, title), h("div", { class: "big" }, val),
+        h("small", { class: "muted" }, "Saved by " + (d[which + "_by"] || "-")));
+      const inp = h("input", { type: "datetime-local", value: nowInput(), max: nowInput(), "aria-label": title + " date and time" });
+      const btn = h("button", { class: "btn ghost", onclick: async () => {
+        const t = inp.value.replace("T", " ");
+        if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(t)) { flash("Choose a valid date and time.", "error"); return; }
+        if (t > nowStr()) { flash("The time cannot be in the future.", "error"); return; }
+        if (which === "exit" && d.entry_time && t < d.entry_time) { flash(`Exit time cannot be before the entry time (${d.entry_time}).`, "error"); return; }
+        if (which === "entry" && d.exit_time && t > d.exit_time) { flash(`Entry time cannot be after the exit time (${d.exit_time}).`, "error"); return; }
+        btn.disabled = true;
         try {
-          const res = await GH.markGate(d, which, label(), nowStr());
+          const res = await GH.markGate(d, which, label(), t, nowStr());
           records[records.findIndex((r) => r.id === d.id)] = res.record;
           viewDetail(id);
-          flash(res.changed ? `Vehicle ${which} time recorded.` : "Already recorded by someone else.", res.changed ? "ok" : "warn");
-        } catch (err) { e.target.disabled = false; flash(err.message, "error"); }
-      } }, `Mark ${which} now`));
+          flash(res.changed ? `Vehicle ${which} time saved.` : "Already recorded by someone else.", res.changed ? "ok" : "warn");
+        } catch (err) { btn.disabled = false; flash(err.message, "error"); }
+      } }, `Save ${which} time`);
+      return h("div", { class: "gatebox" }, h("strong", {}, title), inp, btn);
+    };
 
     shell(
       h("div", { class: "row between" }, h("h1", {}, d.manifest_no, " ", h("span", { class: "muted" }, "/ " + d.gatepass_no)), h("a", { href: "#/" }, "← All records")),
@@ -237,7 +247,7 @@
         dl("Created", `${d.created_at} by ${d.created_by}`), d.notes ? dl("Notes", d.notes, true) : null)),
       h("div", { class: "card" }, h("h2", {}, "Gate record"),
         h("div", { class: "gate" }, gate("entry", "Vehicle entry", d.entry_time), gate("exit", "Vehicle exit", d.exit_time)),
-        h("p", { class: "muted small" }, "Times are recorded once and cannot be overwritten. The downloaded gatepass shows them.")),
+        h("p", { class: "muted small" }, "Choose the actual date and time of entry / exit (it starts at the current time). Each time is saved once and cannot be changed; who saved it and when is logged. The downloaded gatepass shows them.")),
       d.duplicates.length ? h("div", { class: "warnbox" }, h("strong", {}, `\u26A0 WARNING: ${d.duplicates.length} duplicate Order ID / AWB`),
         h("ul", {}, d.duplicates.map((x) => h("li", {}, h("b", {}, x.ref), " \u2013 " + dupWhy(x))))) : null,
       h("div", { class: "card" }, h("h2", {}, `Shipments (${d.items.length})`), h("ol", { class: "refs" }, d.items.map((x) => {

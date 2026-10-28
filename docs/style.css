@@ -50,3 +50,4 @@ th,td{padding:9px 12px;vertical-align:top}tr+tr td{border-top:1px solid var(--li
 .warnbox ul{margin:6px 0 0;padding-left:20px}
 .refs li.dup{background:#ffe9a8;border-radius:4px;padding:1px 6px;font-weight:700}
 .tag{display:inline-block;margin-left:8px;padding:0 6px;border-radius:4px;background:#b42318;color:#fff;font-size:11px;letter-spacing:.04em;vertical-align:middle}
+.gatebox input{margin:8px 0 0}

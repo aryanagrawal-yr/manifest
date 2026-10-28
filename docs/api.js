@@ -146,17 +146,22 @@
     throw new Error("Could not reserve a manifest number. Please try again.");
   }
 
-  // Sets entry/exit time once. Re-reads the file first so nobody overwrites anyone.
-  async function markGate(rec, which, userLabel, nowStr) {
+  // Sets entry/exit time once (timeStr = chosen "YYYY-MM-DD HH:MM", loggedAt = real time of saving).
+  // Re-reads the file first so nobody overwrites anyone, and checks entry is not after exit.
+  async function markGate(rec, which, userLabel, timeStr, loggedAt) {
     const tKey = which === "entry" ? "entry_time" : "exit_time";
     const bKey = which === "entry" ? "entry_by" : "exit_by";
+    const lKey = which === "entry" ? "entry_logged_at" : "exit_logged_at";
     for (let attempt = 0; attempt < 3; attempt++) {
       const f = await req("GET", `/repos/${cfg.owner}/${cfg.repo}/contents/${rec._path}?ref=${encodeURIComponent(cfg.branch)}`);
       const cur = cleanRecord(unb64(f.content), f.sha, rec._path);
       if (!cur) throw new Error("Record is damaged.");
       if (cur[tKey]) return { record: cur, changed: false };
-      cur[tKey] = nowStr;
+      if (which === "exit" && cur.entry_time && timeStr < cur.entry_time) throw new Error(`Exit time cannot be before the entry time (${cur.entry_time}).`);
+      if (which === "entry" && cur.exit_time && timeStr > cur.exit_time) throw new Error(`Entry time cannot be after the exit time (${cur.exit_time}).`);
+      cur[tKey] = timeStr;
       cur[bKey] = userLabel;
+      cur[lKey] = loggedAt;
       const toSave = Object.assign({}, cur);
       delete toSave._sha; delete toSave._path;
       try {

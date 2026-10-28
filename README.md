@@ -34,8 +34,9 @@ Tokens are kept in the browser tab (session) unless "Remember on this device" is
 ## Daily use
 - **+ New**: fill the form once and paste the AWB / Order IDs. Manifest and gatepass numbers are created automatically
   (`MF-YYYYMMDD-001`, `GP-YYYYMMDD-001`).
-- Open a record to download either PDF, and to press **Mark entry now / Mark exit now** at the gate.
-  Gate times can be set only once; the gatepass PDF shows them.
+- Open a record to download either PDF. In **Gate record**, pick the date and time of vehicle **entry** and **exit**
+  (it starts at the current time) and press **Save entry time / Save exit time**. A time cannot be in the future,
+  exit cannot be before entry, and each time is saved once (who saved it and when is logged). The gatepass PDF shows them.
 - **All records**: search by AWB, order id, courier, vehicle or manifest no; filter by partner or date;
   **Download full Excel** exports everything (Dispatches + Items sheets).
 - **Duplicate warning:** an Order ID / AWB that already appeared in an earlier manifest, or was typed twice in the same list, still saves but is flagged. The manifest PDF shows an amber WARNING box and highlights the row with a [DUPLICATE] tag; the gatepass shows a short warning; the record page and the Excel export mark them too. Only the manifests loaded in the app are checked, which is all records in `manifest-data`.
