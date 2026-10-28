@@ -78,6 +78,32 @@
     ];
   }
 
+  const dupMapOf = (d) => { const m = new Map(); (d.duplicates || []).forEach((x) => m.set(String(x.ref).toUpperCase(), x)); return m; };
+  const dupWhy = (x) => [x.earlier && x.earlier.length ? "also in " + x.earlier.join(", ") : "", x.times_in_list > 1 ? "typed " + x.times_in_list + " times" : ""].filter(Boolean).join("; ");
+
+  // amber warning box listing duplicate Order IDs / AWBs. Returns new y.
+  function warning(doc, y, d, full) {
+    const dups = d.duplicates || [];
+    if (!dups.length) return y;
+    const head = `WARNING: ${dups.length} DUPLICATE ORDER ID / AWB`;
+    let body;
+    if (full) {
+      const shown = dups.slice(0, 8).map((x) => `${x.ref} (${dupWhy(x)})`).join(";  ");
+      body = "Already listed in an earlier manifest or repeated in this list. Verify before handover. " + shown + (dups.length > 8 ? `;  and ${dups.length - 8} more (highlighted below).` : "");
+    } else {
+      body = "This dispatch has duplicate Order ID / AWB entries. Check the manifest " + d.manifest_no + " before the vehicle leaves.";
+    }
+    const lines = doc.splitTextToSize(lat(body), CW - 8);
+    const hgt = 9 + lines.length * 4;
+    doc.setFillColor(255, 246, 224); doc.setDrawColor(154, 103, 0); doc.setLineWidth(0.6);
+    doc.rect(M, y, CW, hgt, "FD");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9.5); doc.setTextColor(180, 35, 24);
+    doc.text(head, M + 4, y + 6);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(92, 61, 0);
+    doc.text(lines, M + 4, y + 11);
+    return y + hgt + 4;
+  }
+
   function paragraph(doc, y, text, size) {
     doc.setFont("helvetica", "normal"); doc.setFontSize(size || 9); doc.setTextColor(...INK);
     const lines = doc.splitTextToSize(lat(text), CW);
@@ -112,14 +138,17 @@
     let y = header(doc, "Dispatch Manifest", d.manifest_no, d.partner, await loadLogo());
     y = grid(doc, y, common(d).concat([["Total shipments", d.items.length], ["Gatepass no", d.gatepass_no]]));
     y += 4;
+    y = warning(doc, y, d, true);
     if (d.notes) y = paragraph(doc, y + 2, "Notes: " + d.notes, 9);
     doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(...INK);
     doc.text("SHIPMENT DETAILS (ORDER ID / AWB)", M, y + 6);
 
+    const dm = dupMapOf(d);
+    const cellText = (x) => lat(x) + (dm.has(String(x).toUpperCase()) ? "   [DUPLICATE]" : "");
     const items = d.items, half = Math.ceil(items.length / 2), rows = [];
     for (let i = 0; i < half; i++) {
       const j = i + half;
-      rows.push([i + 1, lat(items[i]), j < items.length ? j + 1 : "", j < items.length ? lat(items[j]) : ""]);
+      rows.push([i + 1, cellText(items[i]), j < items.length ? j + 1 : "", j < items.length ? cellText(items[j]) : ""]);
     }
     doc.autoTable({
       startY: y + 9, head: [["Sr", "Order ID / AWB", "Sr", "Order ID / AWB"]], body: rows, theme: "grid",
@@ -128,6 +157,13 @@
       headStyles: { fillColor: INK, textColor: 255 },
       alternateRowStyles: { fillColor: SOFT },
       columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 80 }, 2: { cellWidth: 10 }, 3: { cellWidth: 80 } },
+      didParseCell: (data) => {
+        if (data.section === "body" && (data.column.index === 1 || data.column.index === 3) && String(data.cell.raw).indexOf("[DUPLICATE]") >= 0) {
+          data.cell.styles.fillColor = [255, 226, 140];
+          data.cell.styles.textColor = [150, 40, 0];
+          data.cell.styles.fontStyle = "bold";
+        }
+      },
     });
     y = doc.lastAutoTable.finalY + 9;
     if (y > PH - 75) { doc.addPage(); y = 25; }
@@ -144,7 +180,8 @@
     const doc = newDoc(d.gatepass_no);
     let y = header(doc, "Vehicle Gate Pass", d.gatepass_no, d.partner, await loadLogo());
     y = grid(doc, y, common(d).concat([["Purpose", `Pickup of ${d.items.length} shipment(s)`], ["Manifest no", d.manifest_no]]));
-    y += 8;
+    y += 6;
+    y = warning(doc, y, d, false) + 2;
     const bw = CW / 2;
     doc.setDrawColor(...INK); doc.setLineWidth(0.5); doc.rect(M, y, CW, 22); doc.line(M + bw, y, M + bw, y + 22);
     [["VEHICLE ENTRY (IN) TIME", d.entry_time], ["VEHICLE EXIT (OUT) TIME", d.exit_time]].forEach(([lab, val], i) => {

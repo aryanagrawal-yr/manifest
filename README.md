@@ -38,7 +38,7 @@ Tokens are kept in the browser tab (session) unless "Remember on this device" is
   Gate times can be set only once; the gatepass PDF shows them.
 - **All records**: search by AWB, order id, courier, vehicle or manifest no; filter by partner or date;
   **Download full Excel** exports everything (Dispatches + Items sheets).
-- If an AWB already appeared in an earlier manifest you get a warning (it still saves).
+- **Duplicate warning:** an Order ID / AWB that already appeared in an earlier manifest, or was typed twice in the same list, still saves but is flagged. The manifest PDF shows an amber WARNING box and highlights the row with a [DUPLICATE] tag; the gatepass shows a short warning; the record page and the Excel export mark them too. Only the manifests loaded in the app are checked, which is all records in `manifest-data`.
 
 ## Proof / audit trail
 Every create and gate update is a Git commit in `manifest-data`, so the history of who changed what and when is kept by GitHub.

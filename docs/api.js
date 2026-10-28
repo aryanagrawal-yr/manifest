@@ -47,6 +47,11 @@
     const r = JSON.parse(raw);
     if (!r || !ID_RE.test(r.id) || !Array.isArray(r.items)) return null;
     r.items = r.items.map(String);
+    r.duplicates = (Array.isArray(r.duplicates) ? r.duplicates : []).filter((x) => x && x.ref).map((x) => ({
+      ref: String(x.ref),
+      earlier: (Array.isArray(x.earlier) ? x.earlier : []).map(String),
+      times_in_list: Number(x.times_in_list) || 1,
+    }));
     r._sha = sha;
     r._path = path;
     return r;

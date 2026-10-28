@@ -33,6 +33,8 @@
   const nowStr = () => { const p = parts(); return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`; };
   const nowInput = () => nowStr().replace(" ", "T");
   const label = () => user.name;
+  const dupMap = (d) => { const m = new Map(); (d.duplicates || []).forEach((x) => m.set(x.ref.toUpperCase(), x)); return m; };
+  const dupWhy = (x) => [x.earlier.length ? "already in " + x.earlier.join(", ") : "", x.times_in_list > 1 ? `entered ${x.times_in_list} times in this list` : ""].filter(Boolean).join("; ");
 
   let pending = null; // message to show after the next page render
   function go(hash, msg, kind) {
@@ -129,7 +131,7 @@
             h("td", {}, r.partner),
             h("td", {}, r.courier_name, h("br"), h("small", { class: "muted" }, r.courier_phone)),
             h("td", {}, r.vehicle_no, h("br"), h("small", { class: "muted" }, r.vehicle_type)),
-            h("td", {}, r.items.length),
+            h("td", {}, r.items.length, r.duplicates.length ? [h("br"), h("span", { class: "pill warn" }, `\u26A0 ${r.duplicates.length} duplicate`)] : null),
             h("td", {}, h("span", { class: "pill" + (r.entry_time ? " ok" : "") }, "In"), " ", h("span", { class: "pill" + (r.exit_time ? " ok" : "") }, "Out")),
             h("td", { class: "nowrap" },
               h("button", { class: "link", onclick: () => download("manifest", r) }, "Manifest"), " | ",
@@ -166,8 +168,11 @@
       const digits = cphone.value.replace(/[\s-]/g, "").replace(/^\+?91/, "");
       if (!/^\d{10}$/.test(digits)) errs.push("Courier boy phone must be a 10 digit number.");
       if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dtI.value)) errs.push("Date and time is invalid.");
-      const seen = new Set(), items = [];
-      refs.value.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean).forEach((s) => { if (!seen.has(s.toUpperCase())) { seen.add(s.toUpperCase()); items.push(s.slice(0, 60)); } });
+      const seen = new Map(), items = [];
+      refs.value.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean).forEach((s) => {
+        const k = s.toUpperCase();
+        if (!seen.has(k)) { seen.set(k, 1); items.push(s.slice(0, 60)); } else seen.set(k, seen.get(k) + 1);
+      });
       if (!items.length) errs.push("Add at least one Order ID / AWB number.");
       if (items.length > 1000) errs.push("Maximum 1000 shipments per manifest.");
       if (errs.length) { flash(errs.join(" "), "error"); return; }
@@ -175,18 +180,23 @@
       btn.disabled = true; btn.textContent = "Saving...";
       try {
         await refresh(false);
-        const prior = new Set(); records.forEach((r) => r.items.forEach((x) => prior.add(x.toUpperCase())));
-        const dups = items.filter((x) => prior.has(x.toUpperCase()));
+        const prior = new Map();
+        records.forEach((r) => r.items.forEach((x) => { const k = x.toUpperCase(); if (!prior.has(k)) prior.set(k, []); prior.get(k).push(r.manifest_no); }));
+        const duplicates = [];
+        items.forEach((x) => {
+          const k = x.toUpperCase(), earlier = prior.get(k) || [], times = seen.get(k) || 1;
+          if (earlier.length || times > 1) duplicates.push({ ref: x, earlier: earlier.slice(0, 5), times_in_list: times });
+        });
         const rec = await GH.createRecord({
           dispatch_dt: dtI.value.replace("T", " "), employee: emp.value.trim().slice(0, 80), partner: partner.value.trim().slice(0, 60),
           courier_name: cname.value.trim().slice(0, 80), courier_phone: digits,
           vehicle_no: vno.value.trim().replace(/\s+/g, " ").toUpperCase().slice(0, 20), vehicle_type: vtype.value,
-          notes: notes.value.trim().slice(0, 300), items,
+          notes: notes.value.trim().slice(0, 300), items, duplicates,
         }, label(), nowStr());
         records.unshift(rec);
         go("#/d/" + rec.id,
-          dups.length ? `Saved. ${dups.length} AWB/order id(s) were already in an earlier manifest: ${dups.slice(0, 10).join(", ")}` : "Manifest and gatepass created.",
-          dups.length ? "warn" : "ok");
+          duplicates.length ? `Saved with WARNING: ${duplicates.length} duplicate AWB/Order ID(s): ${duplicates.slice(0, 10).map((x) => x.ref).join(", ")}. They are highlighted in the manifest.` : "Manifest and gatepass created.",
+          duplicates.length ? "warn" : "ok");
       } catch (err) {
         btn.disabled = false; btn.textContent = "Create manifest & gatepass"; flash(err.message, "error");
       }
@@ -228,7 +238,12 @@
       h("div", { class: "card" }, h("h2", {}, "Gate record"),
         h("div", { class: "gate" }, gate("entry", "Vehicle entry", d.entry_time), gate("exit", "Vehicle exit", d.exit_time)),
         h("p", { class: "muted small" }, "Times are recorded once and cannot be overwritten. The downloaded gatepass shows them.")),
-      h("div", { class: "card" }, h("h2", {}, `Shipments (${d.items.length})`), h("ol", { class: "refs" }, d.items.map((x) => h("li", {}, x)))));
+      d.duplicates.length ? h("div", { class: "warnbox" }, h("strong", {}, `\u26A0 WARNING: ${d.duplicates.length} duplicate Order ID / AWB`),
+        h("ul", {}, d.duplicates.map((x) => h("li", {}, h("b", {}, x.ref), " \u2013 " + dupWhy(x))))) : null,
+      h("div", { class: "card" }, h("h2", {}, `Shipments (${d.items.length})`), h("ol", { class: "refs" }, d.items.map((x) => {
+        const dp = dupMap(d).get(x.toUpperCase());
+        return h("li", { class: dp ? "dup" : "", title: dp ? dupWhy(dp) : null }, x, dp ? h("span", { class: "tag" }, "DUPLICATE") : null);
+      }))));
   }
 
   // ---------- actions ----------
@@ -242,16 +257,17 @@
   function exportExcel() {
     const wb = XLSX.utils.book_new();
     const disp = [["Dispatch ID", "Manifest No", "Gatepass No", "Dispatch Date & Time", "Employee Name", "Logistics Partner", "Courier Boy Name", "Courier Boy Phone",
-      "Vehicle Number", "Vehicle Type", "Total Orders / AWB", "Notes", "Gate Entry Time", "Gate Exit Time", "Created By", "Created At"]];
-    const items = [["Dispatch ID", "Sr No", "Order ID / AWB"]];
+      "Vehicle Number", "Vehicle Type", "Total Orders / AWB", "Duplicate Warning", "Notes", "Gate Entry Time", "Gate Exit Time", "Created By", "Created At"]];
+    const items = [["Dispatch ID", "Sr No", "Order ID / AWB", "Duplicate?"]];
     records.slice().reverse().forEach((r) => {
       disp.push([r.id, r.manifest_no, r.gatepass_no, r.dispatch_dt, r.employee, r.partner, r.courier_name, r.courier_phone, r.vehicle_no, r.vehicle_type,
-        r.items.length, r.notes || "", r.entry_time || "", r.exit_time || "", r.created_by, r.created_at]);
-      r.items.forEach((x, i) => items.push([r.id, i + 1, x]));
+        r.items.length, r.duplicates.length ? r.duplicates.length + " duplicate: " + r.duplicates.map((x) => x.ref).join(", ") : "", r.notes || "", r.entry_time || "", r.exit_time || "", r.created_by, r.created_at]);
+      const dm = dupMap(r);
+      r.items.forEach((x, i) => { const dp = dm.get(x.toUpperCase()); items.push([r.id, i + 1, x, dp ? "DUPLICATE (" + dupWhy(dp) + ")" : ""]); });
     });
     const w1 = XLSX.utils.aoa_to_sheet(disp), w2 = XLSX.utils.aoa_to_sheet(items);
-    w1["!cols"] = [20, 20, 20, 20, 18, 20, 20, 16, 16, 14, 12, 30, 18, 18, 14, 18].map((wch) => ({ wch }));
-    w2["!cols"] = [{ wch: 20 }, { wch: 8 }, { wch: 30 }];
+    w1["!cols"] = [20, 20, 20, 20, 18, 20, 20, 16, 16, 14, 12, 30, 30, 18, 18, 14, 18].map((wch) => ({ wch }));
+    w2["!cols"] = [{ wch: 20 }, { wch: 8 }, { wch: 30 }, { wch: 40 }];
     XLSX.utils.book_append_sheet(wb, w1, "Dispatches");
     XLSX.utils.book_append_sheet(wb, w2, "Items");
     XLSX.writeFile(wb, "youth-robe-manifest-database.xlsx");
