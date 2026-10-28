@@ -14,7 +14,7 @@
   // The "Y" logo from the reference design: [x, y] in a 56.6 x 50 box, y pointing down.
   const LOGO = [[10.65, 49.1], [11.5, 49.6], [12.75, 49.95], [14.55, 49.9], [16.25, 49.4], [18.15, 48.55], [19.5, 47.65], [20.9, 46.55], [22.45, 44.95], [23.6, 43.6], [24.7, 42.05], [25.65, 40.45], [27.05, 37.7], [27.9, 35.4], [28.55, 32.4], [55.85, 1.45], [56.5, 0.9], [56.6, 0.6], [56.45, 0.3], [39.55, 0.05], [39.2, 0.2], [38.75, 0.75], [29.1, 16.55], [25.65, 21.5], [25.45, 21.15], [18.65, 0.65], [18.3, 0.3], [17.95, 0.2], [5.85, 0.25], [0.15, 0.0], [0.0, 0.1], [0.0, 0.5], [5.55, 5.75], [5.9, 6.2], [8.45, 11.3], [15.95, 28.3], [11.75, 44.8], [10.5, 48.55], [10.5, 48.85]];
   const THEMES = {
-    colour: { accent: [18, 64, 128], urlFill: [236, 243, 252], zebra: [242, 242, 245], dupFill: [255, 226, 140], dupTag: [180, 35, 24], warnFill: [255, 246, 224], warnLine: [154, 103, 0], warnText: [92, 61, 0] },
+    colour: { accent: [219, 26, 33], urlFill: [255, 242, 242], zebra: [242, 242, 245], dupFill: [255, 226, 140], dupTag: [180, 35, 24], warnFill: [255, 246, 224], warnLine: [154, 103, 0], warnText: [92, 61, 0] },
     bw: { accent: [0, 0, 0], urlFill: [255, 255, 255], zebra: [242, 242, 242], dupFill: [208, 208, 208], dupTag: [0, 0, 0], warnFill: [255, 255, 255], warnLine: [0, 0, 0], warnText: [0, 0, 0] },
   };
   const ZEBRA = [242, 242, 245], DUPFILL = [255, 226, 140], DUPTAG = [180, 35, 24], MUTED = [115, 115, 115];
@@ -33,7 +33,7 @@
     const { jsPDF } = root.jspdf;
     const TH = THEMES[theme === "bw" ? "bw" : "colour"];
     const doc = new jsPDF({ unit: "pt", format: "a4" });
-    doc.setProperties({ title: d.manifest_no, author: "RAZZAI WORLD" });
+    doc.setProperties({ title: d.manifest_no, author: "YOUTH ROBE" });
     const H = doc.internal.pageSize.getHeight(), PWID = doc.internal.pageSize.getWidth();
     const B = cfg.brand;
     const T = Ship.totals(d.items);
@@ -201,7 +201,7 @@
     const { jsPDF } = root.jspdf;
     const TH = THEMES[theme === "bw" ? "bw" : "colour"], B = cfg.brand;
     const doc = new jsPDF({ unit: "pt", format: "a4" });
-    doc.setProperties({ title: d.gatepass_no, author: "RAZZAI WORLD" });
+    doc.setProperties({ title: d.gatepass_no, author: "YOUTH ROBE" });
     const H = doc.internal.pageSize.getHeight(), PWID = doc.internal.pageSize.getWidth();
     const Y = (y) => H - y;
     function txt(s, x, y, o) {
@@ -268,7 +268,7 @@
         if (!val) hline(x + 10, x + 245, y - 46, [0, 0, 0], 0.8);
       });
       y -= 84;
-      txt(`Purpose: truck dispatch of ${d.items.length} shipment(s) as per manifest ${d.manifest_no}`, 36, y, { size: 9.5, bold: true });
+      txt(`Purpose: Razzai World truck dispatch of ${d.items.length} shipment(s) as per manifest ${d.manifest_no}`, 36, y, { size: 9.5, bold: true });
       y -= 14;
       if (d.notes) { txt("Notes: " + d.notes, 36, y, { size: 9, maxW: 520 }); y -= 14; }
       txt("This pass is valid only for the vehicle and date mentioned above. Goods leaving must match the manifest.", 36, y, { size: 8, color: MUTED });

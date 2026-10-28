@@ -1,4 +1,4 @@
-// RAZZAI WORLD Truck Manifest & Gatepass: browser app. All user text is inserted as text nodes (never HTML).
+// YOUTH ROBE x RAZZAI WORLD Truck Manifest & Gatepass: browser app. All user text is inserted as text nodes (never HTML).
 (function () {
   const cfg = window.APP_CONFIG;
   const app = document.getElementById("app");
@@ -97,7 +97,7 @@
       h("button", { class: "link", onclick: logout, title: user.login }, "Logout")) : null;
     app.replaceChildren(
       h("header", { class: "top" },
-        h("a", { class: "brand", href: user ? "#/" : "#/login" }, h("span", {}, "RAZZAI WORLD", h("small", {}, "Truck Manifest & Gate Pass  |  Harda - Indore"))), nav),
+        h("a", { class: "brand", href: user ? "#/" : "#/login" }, h("img", { src: "logo.svg", alt: "", class: "logo" }), h("span", {}, "YOUTH ROBE", h("small", {}, "x Razzai World  |  Truck Manifest & Gate Pass  |  Harda - Indore"))), nav),
       h("div", { class: "stripe" }),
       h("main", { id: "main" }, ...content));
     flashEl = null;
@@ -350,7 +350,7 @@
         btn.disabled = false; btn.textContent = "Create manifest & gatepass"; flash(err.message, "error");
       }
     } },
-      h("label", {}, "Date & time", dtI), h("label", {}, "Employee name (Razzai World)", emp),
+      h("label", {}, "Date & time", dtI), h("label", {}, "Employee name (Youth Robe)", emp),
       h("label", {}, "Route (direction)", partner), h("label", {}, "Seal number", seal),
       h("label", {}, "Driver name", cname),
       h("label", {}, "Driver phone", cphone), h("label", {}, "Vehicle number", vno),
@@ -439,7 +439,7 @@
     w2["!cols"] = [20, 8, 16, 22, 8, 12, 16, 50].map((wch) => ({ wch }));
     XLSX.utils.book_append_sheet(wb, w1, "Dispatches");
     XLSX.utils.book_append_sheet(wb, w2, "Items");
-    XLSX.writeFile(wb, "razzai-world-manifest-database.xlsx");
+    XLSX.writeFile(wb, "youth-robe-razzai-manifest-database.xlsx");
   }
 
   // ---------- router ----------

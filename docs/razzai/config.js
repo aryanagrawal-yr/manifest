@@ -4,7 +4,7 @@ window.APP_CONFIG = {
   // The app refuses to run if this repo is public.
   owner: "aryanagrawal-yr",
   repo: "manifest-data",
-  dataDir: "razzai-data",   // folder inside the private data repo (Youth Robe uses "data")
+  dataDir: "razzai-data",   // folder inside the private data repo (Youth Robe pickups use "data")
   idPrefix: "RW",
   branch: "main",
 
@@ -13,13 +13,13 @@ window.APP_CONFIG = {
 
   // Text printed on the manifest PDF (matches the supplied design)
   brand: {
-    title: "RAZZAI WORLD",
-    tagline: "Harda - Indore trunk dispatch",
+    title: "YOUTH ROBE",
+    tagline: "Logistics partner: Razzai World",
     documentTitle: "TRUCK MANIFEST",
-    vendor: "Razzai World",
-    footer: "Razzai World - Harda <> Indore trunk dispatch",
-    url: "",
-    logo: false,
+    vendor: "Youth Robe",
+    footer: "YOUTH ROBE x RAZZAI WORLD - Harda <> Indore trunk dispatch",
+    url: "youthrobe.com",
+    logo: true,
     copies: ["ORIGIN COPY", "DESTINATION COPY", "DRIVER COPY"],
     gateCopies: ["SECURITY COPY", "DRIVER COPY"]
   }
