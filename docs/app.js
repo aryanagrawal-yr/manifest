@@ -97,7 +97,8 @@
       h("button", { class: "link", onclick: logout, title: user.login }, "Logout")) : null;
     app.replaceChildren(
       h("header", { class: "top" },
-        h("a", { class: "brand", href: user ? "#/" : "#/login" }, "ROBEHIVE", h("small", {}, "Manifest & Gatepass  |  Youth Robe")), nav),
+        h("a", { class: "brand", href: user ? "#/" : "#/login" }, h("img", { src: "logo.svg", alt: "", class: "logo" }), h("span", {}, "ROBEHIVE LOGISTICS", h("small", {}, "Pickup Manifest & Gate Pass  |  Youth Robe"))), nav),
+      h("div", { class: "stripe" }),
       h("main", { id: "main" }, ...content));
     flashEl = null;
   }

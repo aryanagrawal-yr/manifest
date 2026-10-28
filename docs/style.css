@@ -84,3 +84,8 @@ tbody tr:hover td{background:var(--red-soft)}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--red);border-color:var(--red)}
 .pill{background:#fff;border-color:#e6c7c7}
 table.ship tr.dup td,.shipt tr.dup td{background:#ffe9a8!important}
+.brand{display:flex;align-items:center;gap:12px}.brand .logo{height:34px;width:auto}
+.brand span{line-height:1.15}
+.stripe{height:4px;background:linear-gradient(90deg,#111,#111 33%,var(--red-dark) 33%,var(--red))}
+.narrow{border-top:4px solid var(--red)}
+body{background:linear-gradient(#fff4f4,#faf7f7 220px)}
