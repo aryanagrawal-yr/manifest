@@ -195,9 +195,9 @@
   // ======================================================================
   //  GATE PASS (same RobeHive look as the manifest; one page per copy)
   // ======================================================================
-  async function gatepass(d) {
+  async function gatepass(d, theme) {
     const { jsPDF } = root.jspdf;
-    const TH = THEMES.colour, B = cfg.brand;
+    const TH = THEMES[theme === "bw" ? "bw" : "colour"], B = cfg.brand;
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     doc.setProperties({ title: d.gatepass_no, author: "YOUTH ROBE" });
     const H = doc.internal.pageSize.getHeight(), PWID = doc.internal.pageSize.getWidth();
@@ -250,9 +250,9 @@
       const dups = d.duplicates || [];
       if (dups.length) {
         y -= 6;
-        box(30, y - 34, 535, 34, [255, 246, 224], [154, 103, 0], 1);
-        txt(`WARNING: ${dups.length} DUPLICATE ORDER ID / AWB in manifest ${d.manifest_no}`, 38, y - 13, { size: 9, bold: true, color: DUPTAG });
-        txt("Check the manifest before the vehicle leaves.", 38, y - 26, { size: 8, color: [92, 61, 0] });
+        box(30, y - 34, 535, 34, TH.warnFill, TH.warnLine, 1);
+        txt(`WARNING: ${dups.length} DUPLICATE ORDER ID / AWB in manifest ${d.manifest_no}`, 38, y - 13, { size: 9, bold: true, color: TH.dupTag });
+        txt("Check the manifest before the vehicle leaves.", 38, y - 26, { size: 8, color: TH.warnText });
         y -= 44;
       }
 

@@ -176,7 +176,8 @@
             h("td", { class: "nowrap" },
               h("button", { class: "link", onclick: () => download("manifest", r) }, "Manifest"), " | ",
               h("button", { class: "link", onclick: () => download("manifest", r, "bw") }, "B&W"), " | ",
-              h("button", { class: "link", onclick: () => download("gatepass", r) }, "Gatepass"))))))) :
+              h("button", { class: "link", onclick: () => download("gatepass", r) }, "Gatepass"), " ",
+              h("button", { class: "link", onclick: () => download("gatepass", r, "bw") }, "(B&W)"))))))) :
           h("div", { class: "card" }, "No records found. ", h("a", { href: "#/new" }, "Create the first manifest & gatepass"), "."));
     }
     [q, ps, dt].forEach((el) => el.addEventListener("input", draw));
@@ -319,7 +320,8 @@
       h("div", { class: "actions" },
         h("button", { class: "btn", onclick: () => download("manifest", d) }, "Manifest PDF (Colour)"),
         h("button", { class: "btn", onclick: () => download("manifest", d, "bw") }, "Manifest PDF (Black & White)"),
-        h("button", { class: "btn", onclick: () => download("gatepass", d) }, "Gatepass PDF")),
+        h("button", { class: "btn", onclick: () => download("gatepass", d) }, "Gatepass PDF (Colour)"),
+        h("button", { class: "btn", onclick: () => download("gatepass", d, "bw") }, "Gatepass PDF (Black & White)")),
       h("div", { class: "card" }, h("dl", { class: "details" },
         dl("Date & time", d.dispatch_dt), dl("Logistics partner", d.partner), dl("Courier boy", d.courier_name), dl("Phone", d.courier_phone),
         dl("Vehicle number", d.vehicle_no), dl("Vehicle type", d.vehicle_type), dl("Employee", d.employee),
@@ -343,8 +345,8 @@
   // ---------- actions ----------
   async function download(kind, rec, theme) {
     try {
-      const doc = await (kind === "manifest" ? PDFGen.manifest(rec, theme) : PDFGen.gatepass(rec));
-      doc.save((kind === "manifest" ? rec.manifest_no + (theme === "bw" ? "-BW" : "") : rec.gatepass_no) + ".pdf");
+      const doc = await (kind === "manifest" ? PDFGen.manifest(rec, theme) : PDFGen.gatepass(rec, theme));
+      doc.save((kind === "manifest" ? rec.manifest_no : rec.gatepass_no) + (theme === "bw" ? "-BW" : "") + ".pdf");
     } catch (e) { flash("Could not create the PDF: " + e.message, "error"); }
   }
 
