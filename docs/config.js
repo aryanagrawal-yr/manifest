@@ -7,5 +7,16 @@ window.APP_CONFIG = {
   branch: "main",
 
   partners: ["Delhivery", "DTDC", "Shadowfax", "RobeHive", "Bluedart", "Ecom Express", "XpressBees"],
-  vehicleTypes: ["Bike", "Scooter", "Auto", "Tempo", "Van", "Mini Truck", "Truck", "Other"]
+  vehicleTypes: ["Bike", "Scooter", "Auto", "Tempo", "Van", "Mini Truck", "Truck", "Other"],
+
+  // Text printed on the manifest PDF (matches the supplied design)
+  brand: {
+    title: "ROBEHIVE LOGISTICS",
+    tagline: "Your logistics partner",
+    documentTitle: "PICKUP MANIFEST",
+    vendor: "Youth Robe",
+    footer: "Powered by YOUTH ROBE - Your Trusted logistics partner",
+    url: "app.robehive.in",
+    copies: ["VENDOR COPY", "ROBEHIVE LOGISTICS COPY", "COURIER COPY"]
+  }
 };

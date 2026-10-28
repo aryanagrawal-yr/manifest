@@ -33,8 +33,47 @@
   const nowStr = () => { const p = parts(); return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`; };
   const nowInput = () => nowStr().replace(" ", "T");
   const label = () => user.name;
-  const dupMap = (d) => { const m = new Map(); (d.duplicates || []).forEach((x) => m.set(x.ref.toUpperCase(), x)); return m; };
-  const dupWhy = (x) => [x.earlier.length ? "already in " + x.earlier.join(", ") : "", x.times_in_list > 1 ? `entered ${x.times_in_list} times in this list` : ""].filter(Boolean).join("; ");
+
+  // Parse rows pasted from a sheet: Order ID, AWB, Boxes, Weight (tab, comma or spaces between columns)
+  function parsePasted(text) {
+    const out = [];
+    text.split(/\r?\n/).forEach((line) => {
+      line = line.trim();
+      if (!line) return;
+      const c = (line.includes("\t") ? line.split("\t") : line.includes(",") ? line.split(",") : line.split(/\s+/)).map((x) => x.trim());
+      if (/order/i.test(c[0]) && /awb/i.test(c[1] || "")) return; // header row
+      let order = "", awb = "", boxes = 1, weight = "";
+      if (c.length === 1) { if (/^#/.test(c[0]) || /^\d{1,8}$/.test(c[0])) order = c[0]; else awb = c[0]; }
+      else {
+        order = c[0]; awb = c[1] || "";
+        if (c[2]) boxes = parseInt(c[2], 10) || 1;
+        if (c[3]) { weight = parseFloat(c[3]); if (isNaN(weight)) weight = ""; }
+      }
+      out.push({ order_id: order, awb, boxes, weight });
+    });
+    return out;
+  }
+
+  // Which Order IDs / AWBs are repeated: already in earlier manifests, or entered more than once here.
+  function findDuplicates(items) {
+    const add = (m, k, no) => { if (!m.has(k)) m.set(k, new Set()); m.get(k).add(no); };
+    const prior = { awb: new Map(), order: new Map() };
+    records.forEach((r) => r.items.forEach((x) => {
+      if (x.awb) add(prior.awb, Ship.normAwb(x.awb), r.manifest_no);
+      if (x.order_id) add(prior.order, Ship.normOrder(x.order_id), r.manifest_no);
+    }));
+    const mine = { awb: new Map(), order: new Map() };
+    items.forEach((x) => {
+      if (x.awb) { const k = Ship.normAwb(x.awb), e = mine.awb.get(k) || { ref: x.awb, n: 0 }; e.n++; mine.awb.set(k, e); }
+      if (x.order_id) { const k = Ship.normOrder(x.order_id), e = mine.order.get(k) || { ref: x.order_id, n: 0 }; e.n++; mine.order.set(k, e); }
+    });
+    const out = [];
+    [["AWB", "awb"], ["Order ID", "order"]].forEach(([kind, key]) => mine[key].forEach((e, k) => {
+      const earlier = prior[key].has(k) ? Array.from(prior[key].get(k)).slice(0, 5) : [];
+      if (earlier.length || e.n > 1) out.push({ ref: e.ref, kind, earlier, times_in_list: e.n });
+    }));
+    return out;
+  }
 
   let pending = null; // message to show after the next page render
   function go(hash, msg, kind) {
@@ -117,7 +156,7 @@
         if (filters.date && !r.dispatch_dt.startsWith(filters.date)) return false;
         if (needle) {
           const hay = [r.id, r.manifest_no, r.gatepass_no, r.partner, r.courier_name, r.courier_phone, r.vehicle_no, r.employee].join(" ").toLowerCase();
-          if (!hay.includes(needle) && !r.items.some((x) => x.toLowerCase().includes(needle))) return false;
+          if (!hay.includes(needle) && !r.items.some((x) => (x.awb + " " + x.order_id).toLowerCase().includes(needle))) return false;
         }
         return true;
       });
@@ -135,6 +174,7 @@
             h("td", {}, h("span", { class: "pill" + (r.entry_time ? " ok" : "") }, "In"), " ", h("span", { class: "pill" + (r.exit_time ? " ok" : "") }, "Out")),
             h("td", { class: "nowrap" },
               h("button", { class: "link", onclick: () => download("manifest", r) }, "Manifest"), " | ",
+              h("button", { class: "link", onclick: () => download("manifest", r, "bw") }, "B&W"), " | ",
               h("button", { class: "link", onclick: () => download("gatepass", r) }, "Gatepass"))))))) :
           h("div", { class: "card" }, "No records found. ", h("a", { href: "#/new" }, "Create the first manifest & gatepass"), "."));
     }
@@ -149,6 +189,53 @@
     draw();
   }
 
+  function shipmentEditor() {
+    const body = h("tbody");
+    const renumber = () => Array.from(body.children).forEach((tr, i) => { tr.firstChild.textContent = String(i + 1); });
+    function addRow(v) {
+      v = v || {};
+      const tr = h("tr", {},
+        h("td", { class: "sno" }),
+        h("td", {}, h("input", { "aria-label": "Order ID", placeholder: "#1020", value: v.order_id || "", maxlength: 40 })),
+        h("td", {}, h("input", { "aria-label": "AWB number", placeholder: "AWB number", value: v.awb || "", maxlength: 40 })),
+        h("td", {}, h("input", { "aria-label": "Boxes", type: "number", min: 1, step: 1, value: v.boxes || 1 })),
+        h("td", {}, h("input", { "aria-label": "Weight in kg", type: "number", min: 0, step: "0.01", value: v.weight === undefined ? "" : v.weight })),
+        h("td", {}, h("button", { type: "button", class: "link", title: "Remove row", onclick: () => { tr.remove(); renumber(); } }, "\u2715")));
+      body.append(tr); renumber();
+    }
+    addRow();
+    const paste = h("textarea", { rows: 4, placeholder: "Order ID, AWB, Boxes, Weight (one shipment per line)" });
+    const el = h("div", {},
+      h("strong", {}, "Shipments"),
+      h("div", { class: "table-wrap shipt" }, h("table", {},
+        h("thead", {}, h("tr", {}, ["#", "Order ID", "AWB number", "Boxes", "Weight (kg)", ""].map((t) => h("th", {}, t)))), body)),
+      h("div", { class: "row addrow" }, h("button", { type: "button", class: "btn ghost small", onclick: () => addRow() }, "+ Add row")),
+      h("label", {}, "Or paste from Excel / Google Sheet", paste,
+        h("small", { class: "muted" }, "Columns: Order ID, AWB, Boxes, Weight. A line with a single value is treated as an Order ID if it starts with # or is a short number, otherwise as an AWB.")),
+      h("button", { type: "button", class: "btn ghost small", onclick: () => {
+        const rows = parsePasted(paste.value);
+        if (!rows.length) { flash("Nothing to add. Paste one shipment per line.", "error"); return; }
+        const first = body.firstChild;
+        if (body.children.length === 1 && Array.from(first.querySelectorAll("input")).slice(0, 2).every((i) => !i.value.trim())) first.remove();
+        rows.forEach(addRow); paste.value = "";
+      } }, "Add pasted rows"));
+    function read() {
+      const items = [], errors = [];
+      Array.from(body.children).forEach((tr, idx) => {
+        const v = Array.from(tr.querySelectorAll("input")).map((i) => i.value.trim());
+        if (!v[0] && !v[1]) return; // blank row
+        const boxes = v[2] === "" ? 1 : Number(v[2]), weight = v[3] === "" ? 0 : Number(v[3]);
+        if (!Number.isInteger(boxes) || boxes < 1 || boxes > 999) errors.push(`Row ${idx + 1}: boxes must be a whole number from 1 to 999.`);
+        else if (!(weight >= 0) || weight > 9999) errors.push(`Row ${idx + 1}: weight must be a number in kg.`);
+        else items.push({ order_id: v[0].slice(0, 40), awb: v[1].slice(0, 40), boxes, weight: Math.round(weight * 100) / 100 });
+      });
+      if (!items.length && !errors.length) errors.push("Add at least one shipment (Order ID or AWB).");
+      if (items.length > 500) errors.push("Maximum 500 shipments per manifest.");
+      return { items, errors };
+    }
+    return { el, read };
+  }
+
   function viewNew() {
     const f = (name, props) => h("input", Object.assign({ name }, props));
     const dtI = f("dispatch_dt", { type: "datetime-local", value: nowInput(), required: true });
@@ -159,7 +246,7 @@
     const vno = f("vehicle_no", { required: true, maxlength: 20, placeholder: "MP 09 AB 1234", class: "upper" });
     const vtype = h("select", { name: "vehicle_type", required: true }, h("option", { value: "" }, "Select..."), cfg.vehicleTypes.map((v) => h("option", {}, v)));
     const notes = f("notes", { maxlength: 300 });
-    const refs = h("textarea", { name: "refs", rows: 10, required: true, placeholder: "One per line (or separated by commas / spaces)" });
+    const ship = shipmentEditor();
     const btn = h("button", { class: "btn" }, "Create manifest & gatepass");
 
     const form = h("form", { class: "card grid", onsubmit: async (e) => {
@@ -168,25 +255,14 @@
       const digits = cphone.value.replace(/[\s-]/g, "").replace(/^\+?91/, "");
       if (!/^\d{10}$/.test(digits)) errs.push("Courier boy phone must be a 10 digit number.");
       if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dtI.value)) errs.push("Date and time is invalid.");
-      const seen = new Map(), items = [];
-      refs.value.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean).forEach((s) => {
-        const k = s.toUpperCase();
-        if (!seen.has(k)) { seen.set(k, 1); items.push(s.slice(0, 60)); } else seen.set(k, seen.get(k) + 1);
-      });
-      if (!items.length) errs.push("Add at least one Order ID / AWB number.");
-      if (items.length > 1000) errs.push("Maximum 1000 shipments per manifest.");
+      const sr = ship.read(), items = sr.items;
+      errs.push(...sr.errors);
       if (errs.length) { flash(errs.join(" "), "error"); return; }
 
       btn.disabled = true; btn.textContent = "Saving...";
       try {
         await refresh(false);
-        const prior = new Map();
-        records.forEach((r) => r.items.forEach((x) => { const k = x.toUpperCase(); if (!prior.has(k)) prior.set(k, []); prior.get(k).push(r.manifest_no); }));
-        const duplicates = [];
-        items.forEach((x) => {
-          const k = x.toUpperCase(), earlier = prior.get(k) || [], times = seen.get(k) || 1;
-          if (earlier.length || times > 1) duplicates.push({ ref: x, earlier: earlier.slice(0, 5), times_in_list: times });
-        });
+        const duplicates = findDuplicates(items);
         const rec = await GH.createRecord({
           dispatch_dt: dtI.value.replace("T", " "), employee: emp.value.trim().slice(0, 80), partner: partner.value.trim().slice(0, 60),
           courier_name: cname.value.trim().slice(0, 80), courier_phone: digits,
@@ -206,7 +282,7 @@
       h("label", {}, "Courier boy name", cname),
       h("label", {}, "Courier boy phone", cphone), h("label", {}, "Vehicle number", vno),
       h("label", {}, "Vehicle type", vtype), h("label", {}, "Notes (optional)", notes),
-      h("label", { class: "full" }, "Order IDs / AWB numbers", refs, h("small", { class: "muted" }, "Paste straight from a sheet. Duplicates inside this list are removed automatically.")),
+      h("div", { class: "full" }, ship.el),
       h("div", { class: "full" }, btn));
     shell(h("h1", {}, "New manifest & gatepass"), h("p", { class: "muted" }, "Enter the details once. Both documents are generated from the same record."), form);
   }
@@ -214,6 +290,7 @@
   function viewDetail(id) {
     const d = records.find((r) => r.id === id);
     if (!d) { shell(h("div", { class: "card" }, "Record not found. ", h("a", { href: "#/" }, "Back to all records"))); return; }
+    const t = Ship.totals(d.items);
     const dl = (k, v, wide) => h("div", { class: wide ? "wide" : "" }, h("dt", {}, k), h("dd", {}, v || "-"));
     const gate = (which, title, val) => {
       if (val) return h("div", { class: "gatebox" }, h("strong", {}, title), h("div", { class: "big" }, val),
@@ -239,8 +316,9 @@
     shell(
       h("div", { class: "row between" }, h("h1", {}, d.manifest_no, " ", h("span", { class: "muted" }, "/ " + d.gatepass_no)), h("a", { href: "#/" }, "← All records")),
       h("div", { class: "actions" },
-        h("button", { class: "btn", onclick: () => download("manifest", d) }, "Download Manifest PDF"),
-        h("button", { class: "btn", onclick: () => download("gatepass", d) }, "Download Gatepass PDF")),
+        h("button", { class: "btn", onclick: () => download("manifest", d) }, "Manifest PDF (Colour)"),
+        h("button", { class: "btn", onclick: () => download("manifest", d, "bw") }, "Manifest PDF (Black & White)"),
+        h("button", { class: "btn", onclick: () => download("gatepass", d) }, "Gatepass PDF")),
       h("div", { class: "card" }, h("dl", { class: "details" },
         dl("Date & time", d.dispatch_dt), dl("Logistics partner", d.partner), dl("Courier boy", d.courier_name), dl("Phone", d.courier_phone),
         dl("Vehicle number", d.vehicle_no), dl("Vehicle type", d.vehicle_type), dl("Employee", d.employee),
@@ -249,35 +327,42 @@
         h("div", { class: "gate" }, gate("entry", "Vehicle entry", d.entry_time), gate("exit", "Vehicle exit", d.exit_time)),
         h("p", { class: "muted small" }, "Choose the actual date and time of entry / exit (it starts at the current time). Each time is saved once and cannot be changed; who saved it and when is logged. The downloaded gatepass shows them.")),
       d.duplicates.length ? h("div", { class: "warnbox" }, h("strong", {}, `\u26A0 WARNING: ${d.duplicates.length} duplicate Order ID / AWB`),
-        h("ul", {}, d.duplicates.map((x) => h("li", {}, h("b", {}, x.ref), " \u2013 " + dupWhy(x))))) : null,
-      h("div", { class: "card" }, h("h2", {}, `Shipments (${d.items.length})`), h("ol", { class: "refs" }, d.items.map((x) => {
-        const dp = dupMap(d).get(x.toUpperCase());
-        return h("li", { class: dp ? "dup" : "", title: dp ? dupWhy(dp) : null }, x, dp ? h("span", { class: "tag" }, "DUPLICATE") : null);
-      }))));
+        h("ul", {}, d.duplicates.map((x) => h("li", {}, h("b", {}, x.kind + " " + x.ref), " \u2013 " + Ship.dupWhy(x))))) : null,
+      h("div", { class: "card" }, h("h2", {}, `Shipments (${t.shipments})  \u2022  ${t.boxes} boxes  \u2022  ${t.weight} kg`),
+        h("div", { class: "table-wrap" }, h("table", { class: "ship" },
+          h("thead", {}, h("tr", {}, ["S.No", "Order ID", "AWB number", "Boxes", "Weight (kg)", "Courier"].map((x) => h("th", {}, x)))),
+          h("tbody", {}, d.items.map((x, i) => {
+            const dp = Ship.rowDupes(d, x);
+            return h("tr", { class: dp.length ? "dup" : "", title: dp.length ? dp.map((y) => y.kind + ": " + Ship.dupWhy(y)).join(" | ") : null },
+              h("td", {}, i + 1), h("td", {}, x.order_id || "-"), h("td", { class: "b" }, x.awb || "-"), h("td", {}, x.boxes),
+              h("td", {}, Ship.fmtNum(x.weight)), h("td", {}, d.partner, dp.length ? h("span", { class: "tag" }, "DUPLICATE") : null));
+          }))))));
   }
 
   // ---------- actions ----------
-  async function download(kind, rec) {
+  async function download(kind, rec, theme) {
     try {
-      const doc = await (kind === "manifest" ? PDFGen.manifest(rec) : PDFGen.gatepass(rec));
-      doc.save((kind === "manifest" ? rec.manifest_no : rec.gatepass_no) + ".pdf");
+      const doc = await (kind === "manifest" ? PDFGen.manifest(rec, theme) : PDFGen.gatepass(rec));
+      doc.save((kind === "manifest" ? rec.manifest_no + (theme === "bw" ? "-BW" : "") : rec.gatepass_no) + ".pdf");
     } catch (e) { flash("Could not create the PDF: " + e.message, "error"); }
   }
 
   function exportExcel() {
     const wb = XLSX.utils.book_new();
     const disp = [["Dispatch ID", "Manifest No", "Gatepass No", "Dispatch Date & Time", "Employee Name", "Logistics Partner", "Courier Boy Name", "Courier Boy Phone",
-      "Vehicle Number", "Vehicle Type", "Total Orders / AWB", "Duplicate Warning", "Notes", "Gate Entry Time", "Gate Exit Time", "Created By", "Created At"]];
-    const items = [["Dispatch ID", "Sr No", "Order ID / AWB", "Duplicate?"]];
+      "Vehicle Number", "Vehicle Type", "Total Shipments", "Total Boxes", "Total Weight (kg)", "Duplicate Warning", "Notes", "Gate Entry Time", "Gate Exit Time", "Created By", "Created At"]];
+    const items = [["Dispatch ID", "Sr No", "Order ID", "AWB Number", "Boxes", "Weight (kg)", "Courier", "Duplicate?"]];
     records.slice().reverse().forEach((r) => {
       disp.push([r.id, r.manifest_no, r.gatepass_no, r.dispatch_dt, r.employee, r.partner, r.courier_name, r.courier_phone, r.vehicle_no, r.vehicle_type,
-        r.items.length, r.duplicates.length ? r.duplicates.length + " duplicate: " + r.duplicates.map((x) => x.ref).join(", ") : "", r.notes || "", r.entry_time || "", r.exit_time || "", r.created_by, r.created_at]);
-      const dm = dupMap(r);
-      r.items.forEach((x, i) => { const dp = dm.get(x.toUpperCase()); items.push([r.id, i + 1, x, dp ? "DUPLICATE (" + dupWhy(dp) + ")" : ""]); });
+        r.items.length, Ship.totals(r.items).boxes, Ship.totals(r.items).weight, r.duplicates.length ? r.duplicates.length + " duplicate: " + r.duplicates.map((x) => x.kind + " " + x.ref).join(", ") : "", r.notes || "", r.entry_time || "", r.exit_time || "", r.created_by, r.created_at]);
+      r.items.forEach((x, i) => {
+        const dp = Ship.rowDupes(r, x);
+        items.push([r.id, i + 1, x.order_id, x.awb, x.boxes, x.weight, r.partner, dp.length ? "DUPLICATE (" + dp.map((y) => y.kind + ": " + Ship.dupWhy(y)).join(" | ") + ")" : ""]);
+      });
     });
     const w1 = XLSX.utils.aoa_to_sheet(disp), w2 = XLSX.utils.aoa_to_sheet(items);
-    w1["!cols"] = [20, 20, 20, 20, 18, 20, 20, 16, 16, 14, 12, 30, 30, 18, 18, 14, 18].map((wch) => ({ wch }));
-    w2["!cols"] = [{ wch: 20 }, { wch: 8 }, { wch: 30 }, { wch: 40 }];
+    w1["!cols"] = [20, 20, 20, 20, 18, 20, 20, 16, 16, 14, 12, 10, 14, 30, 30, 18, 18, 14, 18].map((wch) => ({ wch }));
+    w2["!cols"] = [20, 8, 16, 22, 8, 12, 16, 50].map((wch) => ({ wch }));
     XLSX.utils.book_append_sheet(wb, w1, "Dispatches");
     XLSX.utils.book_append_sheet(wb, w2, "Items");
     XLSX.writeFile(wb, "youth-robe-manifest-database.xlsx");

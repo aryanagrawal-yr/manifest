@@ -1,7 +1,7 @@
 # YOUTH ROBE Manifest & Gatepass
 
-Browser-only app (no server, no database). One entry creates a branded **Dispatch Manifest** and a **Vehicle Gate Pass**
-that share the same details (courier boy, vehicle, date/time, employee, logistics partner, Order IDs / AWBs).
+Browser-only app (no server, no database). One entry creates a branded **Pickup Manifest** and a **Vehicle Gate Pass**
+that share the same details (courier boy, vehicle, date/time, employee, logistics partner, shipments with Order ID, AWB, boxes and weight).
 Every record is saved as a file in a **separate private GitHub repo**, so it can be searched and downloaded again later
 as PDF, and the whole history as Excel.
 
@@ -32,20 +32,21 @@ The app refuses to start if the data repo is public.
 Tokens are kept in the browser tab (session) unless "Remember on this device" is ticked. Use that only on a personal device.
 
 ## Daily use
-- **+ New**: fill the form once and paste the AWB / Order IDs. Manifest and gatepass numbers are created automatically
+- **+ New**: fill the form once and add each shipment (Order ID, AWB, Boxes, Weight kg) in the table, or paste rows from a sheet. Manifest and gatepass numbers are created automatically
   (`MF-YYYYMMDD-001`, `GP-YYYYMMDD-001`).
 - Open a record to download either PDF. In **Gate record**, pick the date and time of vehicle **entry** and **exit**
   (it starts at the current time) and press **Save entry time / Save exit time**. A time cannot be in the future,
   exit cannot be before entry, and each time is saved once (who saved it and when is logged). The gatepass PDF shows them.
 - **All records**: search by AWB, order id, courier, vehicle or manifest no; filter by partner or date;
   **Download full Excel** exports everything (Dispatches + Items sheets).
-- **Duplicate warning:** an Order ID / AWB that already appeared in an earlier manifest, or was typed twice in the same list, still saves but is flagged. The manifest PDF shows an amber WARNING box and highlights the row with a [DUPLICATE] tag; the gatepass shows a short warning; the record page and the Excel export mark them too. Only the manifests loaded in the app are checked, which is all records in `manifest-data`.
+- **Duplicate warning:** an Order ID / AWB that already appeared in an earlier manifest, or was typed twice in the same list, still saves but is flagged. Repeated rows are kept (not merged). The manifest PDF shows an amber WARNING box and highlights each row with a [DUPLICATE] tag; the gatepass shows a short warning; the record page and the Excel export mark them too. Only the manifests loaded in the app are checked, which is all records in `manifest-data`.
 
 ## Proof / audit trail
 Every create and gate update is a Git commit in `manifest-data`, so the history of who changed what and when is kept by GitHub.
 
 ## Branding
-Put a `logo.png` in `docs/` and it replaces the "YOUTH ROBE" text in the PDF header.
+Manifest PDF follows the supplied RobeHive design: **Colourful** and **Black & White** versions, each with 3 copies
+(Vendor, RobeHive Logistics, Courier). Header, footer and copy names are in `docs/config.js` (`brand`); the Courier column shows the logistics partner.
 
 ## Notes and limits
 - PDFs use a standard Latin font: Hindi/other scripts in names would print as `?`. Use English spelling.

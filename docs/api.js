@@ -46,9 +46,13 @@
   function cleanRecord(raw, sha, path) {
     const r = JSON.parse(raw);
     if (!r || !ID_RE.test(r.id) || !Array.isArray(r.items)) return null;
-    r.items = r.items.map(String);
+    // shipment rows: {order_id, awb, boxes, weight}. Older records stored plain strings.
+    r.items = r.items.map((it) => (it && typeof it === "object"
+      ? { order_id: String(it.order_id || ""), awb: String(it.awb || ""), boxes: Number(it.boxes) || 1, weight: Number(it.weight) || 0 }
+      : { order_id: "", awb: String(it), boxes: 1, weight: 0 }));
     r.duplicates = (Array.isArray(r.duplicates) ? r.duplicates : []).filter((x) => x && x.ref).map((x) => ({
       ref: String(x.ref),
+      kind: x.kind === "Order ID" ? "Order ID" : "AWB",
       earlier: (Array.isArray(x.earlier) ? x.earlier : []).map(String),
       times_in_list: Number(x.times_in_list) || 1,
     }));

@@ -51,3 +51,10 @@ th,td{padding:9px 12px;vertical-align:top}tr+tr td{border-top:1px solid var(--li
 .refs li.dup{background:#ffe9a8;border-radius:4px;padding:1px 6px;font-weight:700}
 .tag{display:inline-block;margin-left:8px;padding:0 6px;border-radius:4px;background:#b42318;color:#fff;font-size:11px;letter-spacing:.04em;vertical-align:middle}
 .gatebox input{margin:8px 0 0}
+table.ship{min-width:560px}
+table.ship td.b{font-weight:700}
+table.ship tr.dup td{background:#ffe9a8}
+.shipt{margin:6px 0 8px}.shipt table{min-width:520px}
+.shipt td{padding:4px 6px}.shipt th{padding:6px}.shipt input{margin:0;padding:7px}
+.shipt .sno{width:30px;color:var(--grey)}
+.addrow{margin:0 0 12px}
