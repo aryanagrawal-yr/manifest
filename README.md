@@ -1,41 +1,52 @@
 # YOUTH ROBE Manifest & Gatepass
 
-Small private web app. One entry creates a **Dispatch Manifest** (proof of shipments handed to a courier) and a
-**Vehicle Gate Pass** (entry/exit of the courier vehicle), both branded YOUTH ROBE with the logistics partner name.
-All data lives in one Excel file; every record can be downloaded again as PDF at any time.
+Browser-only app (no server, no database). One entry creates a branded **Dispatch Manifest** and a **Vehicle Gate Pass**
+that share the same details (courier boy, vehicle, date/time, employee, logistics partner, Order IDs / AWBs).
+Every record is saved as a file in a **separate private GitHub repo**, so it can be searched and downloaded again later
+as PDF, and the whole history as Excel.
 
-## What is stored (data/manifest_db.xlsx)
-- **Dispatches** sheet: date/time, employee, logistics partner, courier boy name + phone, vehicle number + type,
-  notes, manifest no, gatepass no, gate entry/exit time, created by.
-- **Items** sheet: every Order ID / AWB, linked to its dispatch.
-
-## Run locally
-```bash
-pip install -r requirements.txt
-python users.py add aryan "Aryan Agrawal" admin     # asks for a password (min 8 chars)
-python users.py add gate "Gate Security" staff
-python app.py                                        # http://127.0.0.1:5000
+```
+docs/            the website (code only, no data)  -> published with GitHub Pages
+manifest-data/   PRIVATE repo, one JSON file per dispatch: data/2026-10/YR-20261029-001.json
 ```
 
-## Access control
-Only people you add with `users.py` can log in (passwords are stored hashed in `data/users.json`).
-`python users.py list` / `python users.py remove <username>` manage them.
-Keep this repo **private**: `data/` (database, users, secret key) is git-ignored and must never be committed.
+## Why two repos
+Records contain phone numbers and vehicle numbers, so they must live in a **private** repo.
+GitHub Pages on the free plan only works from a **public** repo. So: this repo (public, code only) serves the page, and the
+private `manifest-data` repo holds the data. Nobody can read data without a token that has access to `manifest-data`.
+The app refuses to start if the data repo is public.
 
-## Run on a server (recommended: your own PC/VPS so the Excel file persists)
-```bash
-export COOKIE_SECURE=1          # when served over HTTPS
-gunicorn -w 1 --threads 4 -b 0.0.0.0:8000 app:app
-```
-Use **one worker** (`-w 1`) because the Excel file is the database; writes are locked and atomic inside one process.
-Put it behind HTTPS (Caddy / nginx / Cloudflare Tunnel). Hosts with temporary disks (e.g. Vercel) will lose the Excel file.
+## One-time setup
+1. **Create the data repo.** GitHub -> New repository -> name `manifest-data` -> **Private** -> add a README.
+   (If you use another name, change `repo` in `docs/config.js`.)
+2. **Publish the page.** This repo -> Settings -> Pages -> Deploy from a branch -> `main` and folder `/docs`.
+   The address will be `https://aryanagrawal-yr.github.io/manifest/`.
+3. **Create an access token for each person.** GitHub -> Settings -> Developer settings -> Personal access tokens ->
+   Fine-grained tokens -> Generate:
+   - Repository access: **Only select repositories -> manifest-data**
+   - Permissions: **Contents: Read and write**
+   - Give it a name like `manifest-<person>` and an expiry.
+   Give each person their own token (revoke one token to remove one person). Keep tokens private; they are the login.
+4. Open the page, paste the token, sign in.
+
+Tokens are kept in the browser tab (session) unless "Remember on this device" is ticked. Use that only on a personal device.
+
+## Daily use
+- **+ New**: fill the form once and paste the AWB / Order IDs. Manifest and gatepass numbers are created automatically
+  (`MF-YYYYMMDD-001`, `GP-YYYYMMDD-001`).
+- Open a record to download either PDF, and to press **Mark entry now / Mark exit now** at the gate.
+  Gate times can be set only once; the gatepass PDF shows them.
+- **All records**: search by AWB, order id, courier, vehicle or manifest no; filter by partner or date;
+  **Download full Excel** exports everything (Dispatches + Items sheets).
+- If an AWB already appeared in an earlier manifest you get a warning (it still saves).
+
+## Proof / audit trail
+Every create and gate update is a Git commit in `manifest-data`, so the history of who changed what and when is kept by GitHub.
 
 ## Branding
-Drop a logo at `static/logo.png` and it replaces the "YOUTH ROBE" text in the PDF header.
+Put a `logo.png` in `docs/` and it replaces the "YOUTH ROBE" text in the PDF header.
 
-## Backups
-A copy of the database is saved to `data/backups/` once per day. Back up the `data/` folder regularly.
-
-## Limits of Excel as a database
-Fine for a few users and tens of thousands of rows. Do not open and save the Excel file while the app is running
-(download it from the app's "Download full Excel" button instead).
+## Notes and limits
+- PDFs use a standard Latin font: Hindi/other scripts in names would print as `?`. Use English spelling.
+- Works well for thousands of records. All records are loaded when the page opens.
+- Anyone whose token has write access to `manifest-data` can also edit files there directly (history is still kept).
