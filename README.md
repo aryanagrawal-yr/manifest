@@ -52,3 +52,12 @@ Manifest PDF follows the supplied RobeHive design: **Colourful** and **Black & W
 - PDFs use a standard Latin font: Hindi/other scripts in names would print as `?`. Use English spelling.
 - Works well for thousands of records. All records are loaded when the page opens.
 - Anyone whose token has write access to `manifest-data` can also edit files there directly (history is still kept).
+
+## Razzai World (Harda <> Indore trucks)
+
+A second copy of the app lives at `docs/razzai/` (URL: `.../manifest/razzai/`). It is for truck trips between Harda and
+Indore: one record per trip, **Route** = "Harda to Indore" or "Indore to Harda". Differences from the Youth Robe app:
+route dropdown replaces logistics partner, a **Seal number** field is added, entry/exit become **Departed from origin /
+Arrived at destination**, "courier" becomes "driver", and there is no logo/website box (navy theme). Records are stored in the
+same private `manifest-data` repo, in the `razzai-data/` folder, numbered `RW-YYYYMMDD-NNN`. Branding text, copy names and
+routes are in `docs/razzai/config.js`.
