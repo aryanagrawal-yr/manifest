@@ -97,7 +97,7 @@
       h("button", { class: "link", onclick: logout, title: user.login }, "Logout")) : null;
     app.replaceChildren(
       h("header", { class: "top" },
-        h("a", { class: "brand", href: user ? "#/" : "#/login" }, "YOUTH ROBE", h("small", {}, "Manifest & Gatepass")), nav),
+        h("a", { class: "brand", href: user ? "#/" : "#/login" }, "ROBEHIVE", h("small", {}, "Manifest & Gatepass  |  Youth Robe")), nav),
       h("main", { id: "main" }, ...content));
     flashEl = null;
   }

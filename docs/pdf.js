@@ -14,8 +14,8 @@
   // The "Y" logo from the reference design: [x, y] in a 56.6 x 50 box, y pointing down.
   const LOGO = [[10.65, 49.1], [11.5, 49.6], [12.75, 49.95], [14.55, 49.9], [16.25, 49.4], [18.15, 48.55], [19.5, 47.65], [20.9, 46.55], [22.45, 44.95], [23.6, 43.6], [24.7, 42.05], [25.65, 40.45], [27.05, 37.7], [27.9, 35.4], [28.55, 32.4], [55.85, 1.45], [56.5, 0.9], [56.6, 0.6], [56.45, 0.3], [39.55, 0.05], [39.2, 0.2], [38.75, 0.75], [29.1, 16.55], [25.65, 21.5], [25.45, 21.15], [18.65, 0.65], [18.3, 0.3], [17.95, 0.2], [5.85, 0.25], [0.15, 0.0], [0.0, 0.1], [0.0, 0.5], [5.55, 5.75], [5.9, 6.2], [8.45, 11.3], [15.95, 28.3], [11.75, 44.8], [10.5, 48.55], [10.5, 48.85]];
   const THEMES = {
-    colour: { accent: [219, 26, 33], urlFill: [255, 242, 242] },
-    bw: { accent: [0, 0, 0], urlFill: [255, 255, 255] },
+    colour: { accent: [219, 26, 33], urlFill: [255, 242, 242], zebra: [242, 242, 245], dupFill: [255, 226, 140], dupTag: [180, 35, 24], warnFill: [255, 246, 224], warnLine: [154, 103, 0], warnText: [92, 61, 0] },
+    bw: { accent: [0, 0, 0], urlFill: [255, 255, 255], zebra: [242, 242, 242], dupFill: [208, 208, 208], dupTag: [0, 0, 0], warnFill: [255, 255, 255], warnLine: [0, 0, 0], warnText: [0, 0, 0] },
   };
   const ZEBRA = [242, 242, 245], DUPFILL = [255, 226, 140], DUPTAG = [180, 35, 24], MUTED = [115, 115, 115];
   const COLS = { sno: 36, order: 72, awb: 204, boxes: 326, weight: 372, courier: 440 };
@@ -121,9 +121,9 @@
           lab("DOWNLOADED ON", 36, 698); val(stamp, 36, 686);
           lab("TOTAL", 300, 698); val(`${T.shipments} shipments  |  ${T.boxes} boxes  |  ${T.weight} kg`, 300, 686);
           if (warnLines) {
-            box(30, 676 - warnH, 535, warnH, [255, 246, 224], [154, 103, 0], 1);
-            txt(`WARNING: ${d.duplicates.length} DUPLICATE ORDER ID / AWB`, 38, 676 - 13, { size: 9, bold: true, color: DUPTAG });
-            doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(92, 61, 0);
+            box(30, 676 - warnH, 535, warnH, TH.warnFill, TH.warnLine, 1);
+            txt(`WARNING: ${d.duplicates.length} DUPLICATE ORDER ID / AWB`, 38, 676 - 13, { size: 9, bold: true, color: TH.dupTag });
+            doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor.apply(doc, TH.warnText);
             warnLines.forEach((ln, k) => doc.text(ln, 38, Y(676 - 25 - k * 10)));
           }
         }
@@ -139,8 +139,8 @@
         // rows
         p.rows.forEach(({ it, i, y }) => {
           const dup = Ship.rowDupes(d, it).length > 0;
-          if (dup) box(30, y - 6, 535, ROW, DUPFILL);
-          else if (i % 2 === 1) box(30, y - 6, 535, ROW, ZEBRA);
+          if (dup) box(30, y - 6, 535, ROW, TH.dupFill);
+          else if (i % 2 === 1) box(30, y - 6, 535, ROW, TH.zebra);
           txt(String(i + 1), COLS.sno, y, { size: 9 });
           txt(it.order_id, COLS.order, y, { size: 9, maxW: 126 });
           txt(it.awb, COLS.awb, y, { size: 9, bold: true, maxW: 116 });
@@ -148,7 +148,7 @@
           txt(Ship.fmtNum(it.weight), COLS.weight, y, { size: 9 });
           txt(d.partner, COLS.courier, y, { size: 9, maxW: dup ? 68 : 120 });
           if (dup) {
-            box(515, y - 2.5, 46, 10, DUPTAG);
+            box(515, y - 2.5, 46, 10, TH.dupTag);
             txt("DUPLICATE", 538, y + 0.8, { size: 6.5, bold: true, color: [255, 255, 255], align: "center" });
           }
         });
@@ -193,124 +193,104 @@
   }
 
   // ======================================================================
-  //  GATE PASS
+  //  GATE PASS (same RobeHive look as the manifest; one page per copy)
   // ======================================================================
-  const M = 15, PW = 210, PH = 297, CW = 180;
-
-  function newDoc(title) {
-    const { jsPDF } = root.jspdf;
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-    doc.setProperties({ title, author: "YOUTH ROBE" });
-    return doc;
-  }
-
-  function header(doc, title, no, partner) {
-    doc.setFont("helvetica", "bold"); doc.setFontSize(25); doc.setTextColor(...INK);
-    doc.text("YOUTH ROBE", M, 21);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...GREY);
-    doc.text(title, M, 28);
-    doc.setFontSize(7.5);
-    doc.text("LOGISTICS PARTNER", PW - M, 14, { align: "right" });
-    doc.setFont("helvetica", "bold"); doc.setFontSize(15); doc.setTextColor(...INK);
-    doc.text(doc.splitTextToSize(lat(partner), 80).slice(0, 2), PW - M, 21, { align: "right" });
-    doc.setDrawColor(...INK); doc.setLineWidth(0.7); doc.line(M, 32, PW - M, 32);
-    doc.setFontSize(15); doc.text(title.toUpperCase(), M, 42);
-    doc.setFontSize(11); doc.text("No: " + lat(no), PW - M, 42, { align: "right" });
-    return 47;
-  }
-
-  function grid(doc, y, pairs) {
-    const rows = [];
-    for (let i = 0; i < pairs.length; i += 2) {
-      const a = pairs[i], b = pairs[i + 1];
-      rows.push([a[0].toUpperCase(), lat(a[1]), b ? b[0].toUpperCase() : "", b ? lat(b[1]) : ""]);
-    }
-    doc.autoTable({
-      startY: y, body: rows, theme: "grid", margin: { left: M, right: M },
-      styles: { fontSize: 10, cellPadding: 2.4, lineColor: LINE, lineWidth: 0.2, fillColor: SOFT, textColor: INK, fontStyle: "bold" },
-      columnStyles: {
-        0: { cellWidth: 32, fontSize: 7, fontStyle: "normal", textColor: GREY },
-        1: { cellWidth: 58 },
-        2: { cellWidth: 32, fontSize: 7, fontStyle: "normal", textColor: GREY },
-        3: { cellWidth: 58 },
-      },
-    });
-    return doc.lastAutoTable.finalY;
-  }
-
-  function common(d) {
-    return [
-      ["Dispatch date & time", d.dispatch_dt], ["Logistics partner", d.partner],
-      ["Courier boy name", d.courier_name], ["Courier boy phone", d.courier_phone],
-      ["Vehicle number", d.vehicle_no], ["Vehicle type", d.vehicle_type],
-      ["Employee (Youth Robe)", d.employee], ["Dispatch ref", d.id],
-    ];
-  }
-
-  function warning(doc, y, d) {
-    const dups = d.duplicates || [];
-    if (!dups.length) return y;
-    const lines = doc.splitTextToSize(lat(`This dispatch has duplicate Order ID / AWB entries. Check the manifest ${d.manifest_no} before the vehicle leaves.`), CW - 8);
-    const hgt = 9 + lines.length * 4;
-    doc.setFillColor(255, 246, 224); doc.setDrawColor(154, 103, 0); doc.setLineWidth(0.6);
-    doc.rect(M, y, CW, hgt, "FD");
-    doc.setFont("helvetica", "bold"); doc.setFontSize(9.5); doc.setTextColor(180, 35, 24);
-    doc.text(`WARNING: ${dups.length} DUPLICATE ORDER ID / AWB`, M + 4, y + 6);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(92, 61, 0);
-    doc.text(lines, M + 4, y + 11);
-    return y + hgt + 4;
-  }
-
-  function paragraph(doc, y, text, size) {
-    doc.setFont("helvetica", "normal"); doc.setFontSize(size || 9); doc.setTextColor(...INK);
-    const lines = doc.splitTextToSize(lat(text), CW);
-    doc.text(lines, M, y);
-    return y + lines.length * ((size || 9) * 0.45) + 2;
-  }
-
-  function sign(doc, y, labels) {
-    if (y > PH - 55) { doc.addPage(); y = 25; }
-    const gap = 10, w = (CW - gap * (labels.length - 1)) / labels.length;
-    labels.forEach((l, i) => {
-      const x = M + i * (w + gap);
-      doc.setDrawColor(...INK); doc.setLineWidth(0.3); doc.line(x, y + 18, x + w, y + 18);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...GREY);
-      doc.text(doc.splitTextToSize(lat(l), w), x, y + 22);
-    });
-    return y + 34;
-  }
-
-  function footer(doc, no) {
-    const n = doc.getNumberOfPages();
-    for (let i = 1; i <= n; i++) {
-      doc.setPage(i);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...GREY);
-      doc.text("YOUTH ROBE  |  " + lat(no), M, PH - 9);
-      doc.text(`Page ${i} of ${n}`, PW - M, PH - 9, { align: "right" });
-    }
-  }
-
   async function gatepass(d) {
-    const doc = newDoc(d.gatepass_no);
-    let y = header(doc, "Vehicle Gate Pass", d.gatepass_no, d.partner);
-    y = grid(doc, y, common(d).concat([["Purpose", `Pickup of ${d.items.length} shipment(s)`], ["Manifest no", d.manifest_no]]));
-    y += 6;
-    y = warning(doc, y, d) + 2;
-    const bw = CW / 2;
-    doc.setDrawColor(...INK); doc.setLineWidth(0.5); doc.rect(M, y, CW, 22); doc.line(M + bw, y, M + bw, y + 22);
-    [["VEHICLE ENTRY (IN) TIME", d.entry_time], ["VEHICLE EXIT (OUT) TIME", d.exit_time]].forEach(([lab, val], i) => {
-      doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(...GREY);
-      doc.text(lab, M + i * bw + 4, y + 7);
-      doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...INK);
-      doc.text(val ? lat(val) : "____________________", M + i * bw + 4, y + 16);
+    const { jsPDF } = root.jspdf;
+    const TH = THEMES.colour, B = cfg.brand;
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    doc.setProperties({ title: d.gatepass_no, author: "YOUTH ROBE" });
+    const H = doc.internal.pageSize.getHeight(), PWID = doc.internal.pageSize.getWidth();
+    const Y = (y) => H - y;
+    function txt(s, x, y, o) {
+      o = o || {};
+      doc.setFont("helvetica", o.bold ? "bold" : "normal"); doc.setFontSize(o.size || 9);
+      doc.setTextColor.apply(doc, o.color || [0, 0, 0]);
+      let t = lat(s);
+      if (o.maxW) while (t.length > 1 && doc.getTextWidth(t) > o.maxW) t = t.slice(0, -1);
+      doc.text(t, x, Y(y), { align: o.align || "left" });
+    }
+    function box(x, yb, w, h, fill, stroke, lw) {
+      if (fill) doc.setFillColor.apply(doc, fill);
+      if (stroke) { doc.setDrawColor.apply(doc, stroke); doc.setLineWidth(lw || 1); }
+      doc.rect(x, Y(yb + h), w, h, fill && stroke ? "FD" : fill ? "F" : "S");
+    }
+    function hline(x1, x2, y, c, lw) { doc.setDrawColor.apply(doc, c); doc.setLineWidth(lw); doc.line(x1, Y(y), x2, Y(y)); }
+    function logo() {
+      const sc = 0.8808808808808808, P = LOGO.map(([x, y]) => [42 + sc * x, Y(807) + sc * y]), segs = [];
+      for (let k = 1; k < P.length; k++) segs.push([P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1]]);
+      doc.setFillColor(255, 255, 255); doc.lines(segs, P[0][0], P[0][1], [1, 1], "F", true);
+    }
+    const copies = B.gateCopies || ["SECURITY COPY", "COURIER COPY"];
+    copies.forEach((copyLabel, ci) => {
+      if (ci) doc.addPage();
+      box(30, 758, 535, 58, TH.accent); logo();
+      txt(B.title, 106, 790, { size: 20, bold: true, color: [255, 255, 255] });
+      txt(B.tagline, 106, 774, { size: 9, color: [255, 255, 255] });
+      txt("VEHICLE GATE PASS", 550.5, 792, { size: 15, bold: true, color: [255, 255, 255], align: "right" });
+      txt(copyLabel, 550.5, 774, { size: 10, bold: true, color: [255, 255, 255], align: "right" });
+      txt("No: " + d.gatepass_no, 550.5, 764.5, { size: 7.5, color: [255, 255, 255], align: "right" });
+
+      const cells = [
+        ["DISPATCH DATE & TIME", fmtDT(d.dispatch_dt)], ["LOGISTICS PARTNER", d.partner],
+        ["COURIER BOY NAME", d.courier_name], ["COURIER BOY PHONE", d.courier_phone],
+        ["VEHICLE NUMBER", d.vehicle_no], ["VEHICLE TYPE", d.vehicle_type],
+        ["EMPLOYEE (" + B.vendor.toUpperCase() + ")", d.employee], ["MANIFEST NO", d.manifest_no],
+      ];
+      let y = 732;
+      cells.forEach((c, k) => {
+        const x = k % 2 ? 300 : 36;
+        txt(c[0], x, y, { size: 7.5, bold: true, color: TH.accent });
+        txt(c[1], x, y - 12, { size: 10.5, bold: true, maxW: 255 });
+        if (k % 2) y -= 36;
+      });
+      y -= 4; // y = bottom of detail block
+      hline(30, 565, y + 8, [200, 200, 200], 0.6);
+
+      const dups = d.duplicates || [];
+      if (dups.length) {
+        y -= 6;
+        box(30, y - 34, 535, 34, [255, 246, 224], [154, 103, 0], 1);
+        txt(`WARNING: ${dups.length} DUPLICATE ORDER ID / AWB in manifest ${d.manifest_no}`, 38, y - 13, { size: 9, bold: true, color: DUPTAG });
+        txt("Check the manifest before the vehicle leaves.", 38, y - 26, { size: 8, color: [92, 61, 0] });
+        y -= 44;
+      }
+
+      y -= 14;
+      [["VEHICLE ENTRY (IN) TIME", d.entry_time, 36], ["VEHICLE EXIT (OUT) TIME", d.exit_time, 304]].forEach(([lab, val, x]) => {
+        box(x, y - 62, 255, 62, null, TH.accent, 1);
+        box(x, y - 14, 255, 14, TH.accent);
+        txt(lab, x + 6, y - 10.5, { size: 8, bold: true, color: [255, 255, 255] });
+        if (val) txt(val, x + 10, y - 40, { size: 14, bold: true, maxW: 235 });
+        if (!val) hline(x + 10, x + 245, y - 46, [0, 0, 0], 0.8);
+      });
+      y -= 84;
+      txt(`Purpose: pickup of ${d.items.length} shipment(s) as per manifest ${d.manifest_no}`, 36, y, { size: 9.5, bold: true });
+      y -= 14;
+      if (d.notes) { txt("Notes: " + d.notes, 36, y, { size: 9, maxW: 520 }); y -= 14; }
+      txt("This pass is valid only for the vehicle and date mentioned above. Goods leaving must match the manifest.", 36, y, { size: 8, color: MUTED });
+
+      const sw = 171, gap = 11;
+      [[`Authorised by: ${d.employee}`, B.vendor], ["Driver / courier: " + d.courier_name, d.partner], ["Security / gate in-charge", ""]].forEach((sg, k) => {
+        const x = 30 + k * (sw + gap);
+        box(x, 72, sw, 100, null, TH.accent, 1);
+        box(x, 160, sw, 12, TH.accent);
+        txt(["AUTHORISED BY", "DRIVER / COURIER", "SECURITY / GATE"][k], x + 6, 163, { size: 8, bold: true, color: [255, 255, 255] });
+        txt(k === 2 ? "Name:" : sg[0].replace(/^[^:]*: /, ""), x + 8, 140, { size: 9, bold: true, maxW: sw - 16 });
+        if (sg[1]) txt(sg[1], x + 8, 126, { size: 8.5, maxW: sw - 16 });
+        hline(x + 8, x + sw - 8, 94, [0, 0, 0], 0.8);
+        txt("Signature", x + 8, 82, { size: 7.5, color: MUTED });
+      });
+
+      hline(30, 565, 54, [0, 0, 0], 0.8);
+      txt(B.footer, PWID / 2, 40, { size: 9, bold: true, align: "center" });
+      doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+      const bw = doc.getTextWidth(B.url) + 21.4;
+      box(PWID / 2 - bw / 2, 16, bw, 16, TH.urlFill, TH.accent, 1.2);
+      txt(B.url, PWID / 2, 20.5, { size: 10, bold: true, color: TH.accent, align: "center" });
+      txt(d.gatepass_no, 36, 24, { size: 8, color: MUTED });
+      txt(`Copy ${ci + 1} of ${copies.length}`, 550.5, 24, { size: 8, color: MUTED, align: "right" });
     });
-    y += 30;
-    if (d.notes) y = paragraph(doc, y, "Notes: " + d.notes, 9);
-    y = paragraph(doc, y + 3, `This pass is valid only for the vehicle and date mentioned above. Goods leaving must match the attached manifest ${d.manifest_no}.`, 9);
-    y = sign(doc, y + 4, [`Authorised by: ${d.employee} (YOUTH ROBE)`, `Driver / courier: ${d.courier_name}`, "Security / gate in-charge"]);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...GREY);
-    doc.text(`Generated ${d.created_at} IST.`, M, y);
-    footer(doc, d.gatepass_no);
     return doc;
   }
 

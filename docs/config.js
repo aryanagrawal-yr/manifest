@@ -17,6 +17,7 @@ window.APP_CONFIG = {
     vendor: "Youth Robe",
     footer: "Powered by YOUTH ROBE - Your Trusted logistics partner",
     url: "app.robehive.in",
-    copies: ["VENDOR COPY", "ROBEHIVE LOGISTICS COPY", "COURIER COPY"]
+    copies: ["VENDOR COPY", "ROBEHIVE LOGISTICS COPY", "COURIER COPY"],
+    gateCopies: ["SECURITY COPY", "COURIER COPY"]
   }
 };
