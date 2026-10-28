@@ -164,18 +164,18 @@
       const shown = rows.slice(0, 300);
       holder.replaceChildren(
         h("p", { class: "muted" }, `${rows.length} record(s)` + (rows.length > shown.length ? ", showing latest 300" : "")),
-        shown.length ? h("div", { class: "table-wrap" }, h("table", {},
+        shown.length ? h("div", { class: "table-wrap" }, h("table", { class: "cards" },
           h("thead", {}, h("tr", {}, ["Date & time", "Partner", "Courier boy", "Vehicle", "Shipments", "Gate", "Downloads"].map((t) => h("th", {}, t)))),
           h("tbody", {}, shown.map((r) => h("tr", {},
-            h("td", {}, h("a", { href: "#/d/" + r.id }, r.dispatch_dt), h("br"), h("small", { class: "muted" }, r.manifest_no)),
-            h("td", {}, r.partner),
-            h("td", {}, r.courier_name, h("br"), h("small", { class: "muted" }, r.courier_phone)),
-            h("td", {}, r.vehicle_no, h("br"), h("small", { class: "muted" }, r.vehicle_type)),
-            h("td", {}, r.items.length, r.duplicates.length ? [h("br"), h("span", { class: "pill warn" }, `\u26A0 ${r.duplicates.length} duplicate`)] : null),
-            h("td", {}, h("span", { class: "pill" + (r.entry_time ? " ok" : "") }, "In"), " ", h("span", { class: "pill" + (r.exit_time ? " ok" : "") }, "Out")),
-            h("td", { class: "nowrap" },
-              h("button", { class: "link", onclick: () => download("manifest", r) }, "Manifest"), " | ",
-              h("button", { class: "link", onclick: () => download("manifest", r, "bw") }, "B&W"), " | ",
+            h("td", { "data-label": "Date & time" }, h("a", { href: "#/d/" + r.id }, r.dispatch_dt), h("br"), h("small", { class: "muted" }, r.manifest_no)),
+            h("td", { "data-label": "Partner" }, r.partner),
+            h("td", { "data-label": "Courier boy" }, r.courier_name, h("br"), h("small", { class: "muted" }, r.courier_phone)),
+            h("td", { "data-label": "Vehicle" }, r.vehicle_no, h("br"), h("small", { class: "muted" }, r.vehicle_type)),
+            h("td", { "data-label": "Shipments" }, r.items.length, r.duplicates.length ? [h("br"), h("span", { class: "pill warn" }, `\u26A0 ${r.duplicates.length} duplicate`)] : null),
+            h("td", { "data-label": "Gate" }, h("span", { class: "pill" + (r.entry_time ? " ok" : "") }, "In"), " ", h("span", { class: "pill" + (r.exit_time ? " ok" : "") }, "Out")),
+            h("td", { class: "nowrap", "data-label": "Downloads" },
+              h("button", { class: "link", onclick: () => download("manifest", r) }, "Manifest"), " ",
+              h("button", { class: "link", onclick: () => download("manifest", r, "bw") }, "B&W"), " ",
               h("button", { class: "link", onclick: () => download("gatepass", r) }, "Gatepass"), " ",
               h("button", { class: "link", onclick: () => download("gatepass", r, "bw") }, "(B&W)"))))))) :
           h("div", { class: "card" }, "No records found. ", h("a", { href: "#/new" }, "Create the first manifest & gatepass"), "."));
@@ -198,17 +198,87 @@
       v = v || {};
       const tr = h("tr", {},
         h("td", { class: "sno" }),
-        h("td", {}, h("input", { "aria-label": "Order ID", placeholder: "#1020", value: v.order_id || "", maxlength: 40 })),
+        h("td", {}, h("input", { "aria-label": "Order ID", placeholder: "Order ID", value: v.order_id || "", maxlength: 40 })),
         h("td", {}, h("input", { "aria-label": "AWB number", placeholder: "AWB number", value: v.awb || "", maxlength: 40 })),
-        h("td", {}, h("input", { "aria-label": "Boxes", type: "number", min: 1, step: 1, value: v.boxes || 1 })),
-        h("td", {}, h("input", { "aria-label": "Weight in kg", type: "number", min: 0, step: "0.01", value: v.weight === undefined ? "" : v.weight })),
+        h("td", {}, h("input", { "aria-label": "Boxes", placeholder: "Boxes", type: "number", min: 1, step: 1, value: v.boxes || 1 })),
+        h("td", {}, h("input", { "aria-label": "Weight in kg", placeholder: "Weight (kg)", type: "number", min: 0, step: "0.01", value: v.weight === undefined ? "" : v.weight })),
         h("td", {}, h("button", { type: "button", class: "link", title: "Remove row", onclick: () => { tr.remove(); renumber(); } }, "\u2715")));
       body.append(tr); renumber();
     }
     addRow();
+    // ---- barcode scanning: a USB/Bluetooth scanner types the code and presses Enter; phones can use the camera ----
+    let pendingOrder = null;
+    const status = h("div", { class: "scanstatus muted" }, "Ready. Click here and scan a barcode.");
+    const mode = h("select", { "aria-label": "Scan as" },
+      h("option", { value: "awb" }, "Scan AWB numbers"), h("option", { value: "order" }, "Scan Order IDs"),
+      h("option", { value: "pair" }, "Scan Order ID, then its AWB"));
+    const scanIn = h("input", { class: "scanin", placeholder: "Scan barcode here (scanner presses Enter)", autocomplete: "off", autocapitalize: "off", enterkeyhint: "done", "aria-label": "Barcode scan box" });
+    const beep = (ok) => { try {
+      const AC = window.AudioContext || window.webkitAudioContext, c = new AC(), o = c.createOscillator(), g = c.createGain();
+      o.frequency.value = ok ? 880 : 300; g.gain.value = 0.08; o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + (ok ? 0.08 : 0.3));
+      setTimeout(() => c.close(), 500); } catch (e) { /* sound is optional */ } };
+    const existing = (field, val) => {
+      const norm = field === "awb" ? Ship.normAwb : Ship.normOrder;
+      return Array.from(body.querySelectorAll("tr")).filter((tr) => { const i = tr.querySelectorAll("input")[field === "awb" ? 1 : 0]; return i.value.trim() && norm(i.value) === norm(val); }).length;
+    };
+    function addScanned(v) {
+      const first = body.firstChild;
+      if (body.children.length === 1 && Array.from(first.querySelectorAll("input")).slice(0, 2).every((i) => !i.value.trim())) first.remove();
+      addRow(v);
+      const last = body.lastChild; last.classList.add("fresh"); if (last.scrollIntoView) last.scrollIntoView({ block: "nearest" });
+    }
+    function onScan(raw) {
+      const code = String(raw || "").trim().replace(/\s+/g, " ").slice(0, 40);
+      if (!code) return;
+      const m = mode.value;
+      if (m === "pair" && pendingOrder === null) { pendingOrder = code; beep(true); status.className = "scanstatus"; status.textContent = `Order ${code} scanned. Now scan its AWB.`; return; }
+      const rec = m === "awb" ? { awb: code } : m === "order" ? { order_id: code } : { order_id: pendingOrder, awb: code };
+      pendingOrder = null;
+      const dupA = rec.awb ? existing("awb", rec.awb) : 0, dupO = rec.order_id ? existing("order", rec.order_id) : 0;
+      addScanned(rec);
+      const n = body.children.length;
+      if (dupA || dupO) { beep(false); status.className = "scanstatus bad"; status.textContent = `DUPLICATE: ${dupA ? "AWB " + rec.awb : "Order " + rec.order_id} was already scanned in this list. Added anyway and will be flagged. (${n} rows)`; }
+      else { beep(true); status.className = "scanstatus good"; status.textContent = `Added ${rec.awb || rec.order_id}${rec.order_id && rec.awb ? " (" + rec.order_id + ")" : ""}. ${n} row(s) so far.`; }
+    }
+    scanIn.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault(); onScan(scanIn.value); scanIn.value = "";
+    });
+    mode.addEventListener("change", () => { pendingOrder = null; scanIn.focus(); });
+    let camBtn = null;
+    if ("BarcodeDetector" in window && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      camBtn = h("button", { type: "button", class: "btn ghost small", onclick: openCamera }, "Scan with camera");
+    }
+    function openCamera() {
+      const video = h("video", { playsinline: true, muted: true, autoplay: true });
+      const msg = h("div", { class: "camhint" }, "Point the camera at a barcode. Each scan is added to the list.");
+      let stream = null, timer = null, lastCode = "", lastAt = 0;
+      const close = () => { clearInterval(timer); if (stream) stream.getTracks().forEach((t) => t.stop()); overlay.remove(); };
+      const overlay = h("div", { class: "camwrap" }, video, msg, h("button", { type: "button", class: "btn", onclick: close }, "Done"));
+      document.body.append(overlay);
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false }).then((st) => {
+        stream = st; video.srcObject = st; video.play();
+        const det = new window.BarcodeDetector();
+        let busy = false;
+        timer = setInterval(async () => {
+          if (busy || video.readyState < 2) return; busy = true;
+          try {
+            const found = await det.detect(video);
+            if (found.length) {
+              const v = found[0].rawValue, now = Date.now();
+              if (v && (v !== lastCode || now - lastAt > 2500)) { lastCode = v; lastAt = now; onScan(v); msg.textContent = status.textContent; }
+            }
+          } catch (e) { /* ignore frame errors */ }
+          busy = false;
+        }, 300);
+      }).catch(() => { msg.textContent = "Camera is not available. Allow camera access in the browser, or type / use a scanner instead."; });
+    }
     const paste = h("textarea", { rows: 4, placeholder: "Order ID, AWB, Boxes, Weight (one shipment per line)" });
     const el = h("div", {},
       h("strong", {}, "Shipments"),
+      h("div", { class: "scanbox" },
+        h("div", { class: "row" }, mode, camBtn),
+        scanIn, status),
       h("div", { class: "table-wrap shipt" }, h("table", {},
         h("thead", {}, h("tr", {}, ["#", "Order ID", "AWB number", "Boxes", "Weight (kg)", ""].map((t) => h("th", {}, t)))), body)),
       h("div", { class: "row addrow" }, h("button", { type: "button", class: "btn ghost small", onclick: () => addRow() }, "+ Add row")),

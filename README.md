@@ -32,7 +32,7 @@ The app refuses to start if the data repo is public.
 Tokens are kept in the browser tab (session) unless "Remember on this device" is ticked. Use that only on a personal device.
 
 ## Daily use
-- **+ New**: fill the form once and add each shipment (Order ID, AWB, Boxes, Weight kg) in the table, or paste rows from a sheet. Manifest and gatepass numbers are created automatically
+- **+ New**: fill the form once and add each shipment (Order ID, AWB, Boxes, Weight kg) in the table, or paste rows from a sheet, or **scan barcodes**: click the scan box and scan with a USB / Bluetooth scanner (it types the code and presses Enter). Choose AWB, Order ID, or "Order ID, then its AWB" for pairs. A re-scanned code beeps and is flagged. On Android Chrome a "Scan with camera" button also appears. Manifest and gatepass numbers are created automatically
   (`MF-YYYYMMDD-001`, `GP-YYYYMMDD-001`).
 - Open a record to download either PDF. In **Gate record**, pick the date and time of vehicle **entry** and **exit**
   (it starts at the current time) and press **Save entry time / Save exit time**. A time cannot be in the future,
