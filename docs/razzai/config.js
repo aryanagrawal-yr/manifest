@@ -3,8 +3,8 @@ window.APP_CONFIG = {
   // PRIVATE GitHub repo where records are stored (one JSON file per dispatch).
   // The app refuses to run if this repo is public.
   owner: "aryanagrawal-yr",
-  repo: "manifest-data",
-  dataDir: "razzai-data",   // folder inside the private data repo (Youth Robe pickups use "data")
+  repo: "razzai-manifest-data",
+  dataDir: "data",   // folder inside the private data repo
   idPrefix: "RW",
   branch: "main",
 

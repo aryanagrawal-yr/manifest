@@ -58,6 +58,6 @@ Manifest PDF follows the supplied RobeHive design: **Colourful** and **Black & W
 A second copy of the app lives at `docs/razzai/` (URL: `.../manifest/razzai/`). It is for truck trips between Harda and
 Indore: one record per trip, **Route** = "Harda to Indore" or "Indore to Harda". Differences from the Youth Robe app:
 route dropdown replaces logistics partner, a **Seal number** field is added, entry/exit become **Departed from origin /
-Arrived at destination**, "courier" becomes "driver", (Youth Robe red theme, Razzai World named as the logistics partner). Records are stored in the
-same private `manifest-data` repo, in the `razzai-data/` folder, numbered `RW-YYYYMMDD-NNN`. Branding text, copy names and
+Arrived at destination**, "courier" becomes "driver", (Youth Robe red theme, Razzai World named as the logistics partner). Records are stored in their own
+private repo `razzai-manifest-data` (separate from Youth Robe, so tokens for one cannot open the other), numbered `RW-YYYYMMDD-NNN`. Branding text, copy names and
 routes are in `docs/razzai/config.js`.
